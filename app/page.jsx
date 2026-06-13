@@ -1,5 +1,6 @@
 import { supabaseAdmin } from "../lib/supabase";
 import { fmtPesos, fmtFecha } from "../lib/format";
+import LogoutButton from "./LogoutButton";
 
 // Server component: lee directo de Supabase en el servidor (service role, nunca llega al navegador).
 // Cuando agreguemos Supabase Auth, esto pasará a usar la sesión del usuario.
@@ -22,8 +23,13 @@ export default async function Dashboard() {
   return (
     <div className="wrap">
       <div className="header">
-        <h1>Control de Facturación</h1>
-        <p>Fondo Mutuo de Cobertura S.A.S — Tablero de cuentas de cobro</p>
+        <div className="header-row">
+          <div>
+            <h1>Control de Facturación</h1>
+            <p>Fondo Mutuo de Cobertura S.A.S — Tablero de cuentas de cobro</p>
+          </div>
+          <LogoutButton />
+        </div>
       </div>
 
       {error && (
