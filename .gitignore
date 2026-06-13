@@ -1,0 +1,10 @@
+node_modules/
+.next/
+.env.local
+.env*.local
+*.log
+.DS_Store
+.vercel
+desktop.ini
+**/desktop.ini
+Thumbs.db
