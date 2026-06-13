@@ -2,13 +2,22 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 
 // Protege toda la app: sin sesión → redirige a /login.
+// Envuelto en try/catch para que un fallo de Supabase no derribe el sitio (500).
 export async function middleware(request) {
-  let response = NextResponse.next({ request });
+  const path = request.nextUrl.pathname;
+  const esLogin = path.startsWith("/login");
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  // Si por alguna razón faltan las variables, no bloquees con 500: deja ver el login.
+  if (!url || !anon) {
+    return esLogin ? NextResponse.next() : redirigirLogin(request);
+  }
+
+  try {
+    let response = NextResponse.next({ request });
+    const supabase = createServerClient(url, anon, {
       cookies: {
         getAll() {
           return request.cookies.getAll();
@@ -19,27 +28,30 @@ export async function middleware(request) {
           );
         },
       },
+    });
+
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user && !esLogin) return redirigirLogin(request);
+    if (user && esLogin) {
+      const u = request.nextUrl.clone();
+      u.pathname = "/";
+      return NextResponse.redirect(u);
     }
-  );
-
-  const { data: { user } } = await supabase.auth.getUser();
-  const path = request.nextUrl.pathname;
-  const esLogin = path.startsWith("/login");
-
-  if (!user && !esLogin) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    return NextResponse.redirect(url);
+    return response;
+  } catch (e) {
+    console.error("middleware error:", e?.message || e);
+    // Falla cerrado: a login (sin loop si ya estamos en login).
+    return esLogin ? NextResponse.next() : redirigirLogin(request);
   }
-  if (user && esLogin) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/";
-    return NextResponse.redirect(url);
-  }
-  return response;
+}
+
+function redirigirLogin(request) {
+  const u = request.nextUrl.clone();
+  u.pathname = "/login";
+  return NextResponse.redirect(u);
 }
 
 export const config = {
-  // Excluye estáticos; protege páginas y API.
   matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)"],
 };

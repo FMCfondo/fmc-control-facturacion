@@ -9,7 +9,10 @@ export const dynamic = "force-dynamic";
 async function getData() {
   const sb = supabaseAdmin();
   const [ccRes, mutRes] = await Promise.all([
-    sb.from("cuentas_cobro").select("*").order("consecutivo", { ascending: false }),
+    sb.from("cuentas_cobro").select("*")
+      .order("anio", { ascending: false })
+      .order("mes", { ascending: false, nullsFirst: false })
+      .order("consecutivo", { ascending: false }),
     sb.from("mutuales").select("nombre,nombre_corto,es_socia"),
   ]);
   if (ccRes.error) throw ccRes.error;
@@ -28,7 +31,10 @@ export default async function Dashboard() {
             <h1>Control de Facturación</h1>
             <p>Fondo Mutuo de Cobertura S.A.S — Tablero de cuentas de cobro</p>
           </div>
-          <LogoutButton />
+          <div style={{ display: "flex", gap: 8 }}>
+            <a className="btn-primary" href="/generar">+ Generar facturación</a>
+            <LogoutButton />
+          </div>
         </div>
       </div>
 

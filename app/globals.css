@@ -16,6 +16,8 @@ table{width:100%;font-size:12px;border-collapse:collapse}
 thead tr{background:#1e293b;color:#fff;position:sticky;top:0}
 th,td{padding:8px 10px;text-align:left;white-space:nowrap}
 td.num{text-align:right;font-variant-numeric:tabular-nums}
+td.bad{color:#dc2626;font-weight:600}
+td.warnc{color:#b45309;font-weight:600}
 tbody tr:nth-child(even){background:#f8fafc}
 tbody tr{border-bottom:1px solid #e2e8f0}
 .badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600}
@@ -38,3 +40,5 @@ tbody tr{border-bottom:1px solid #e2e8f0}
 .logout{background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:8px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer}
 .logout:hover{background:rgba(255,255,255,.25)}
 .header-row{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.btn-primary{background:#10b981;color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center}
+.btn-primary:hover{opacity:.9}
