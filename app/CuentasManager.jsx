@@ -35,6 +35,11 @@ export default function CuentasManager({ cuentas, mutuales }) {
   const [pagoForm, setPagoForm] = useState({ fecha: "", valor: "", metodo: "", notas: "" });
   const [pagoMsg, setPagoMsg] = useState("");
 
+  // Filtros y ordenamiento de la tabla (estilo Excel).
+  const [filtros, setFiltros] = useState({});
+  const [orden, setOrden] = useState({ campo: null, dir: 1 });
+  const setF = (k, v) => setFiltros((f) => ({ ...f, [k]: v }));
+
   const mapNombre = Object.fromEntries(mutuales.map((m) => [m.id, m.nombre]));
   const nombreCliente = (c) =>
     c.tipo === "irregular" ? (c.cliente_nombre || "—") : (mapNombre[c.mutual_id] || c.cliente_nombre || "—");
@@ -184,6 +189,42 @@ export default function CuentasManager({ cuentas, mutuales }) {
   const totRec = lista.reduce((s, c) => s + (Number(c.valor_recibido) || 0), 0);
   const pendientes = lista.filter((c) => c.estado !== "pago").length;
 
+  // Valor de cada columna (para filtrar y ordenar).
+  const NUMERICAS = ["consecutivo", "mes", "anio", "facturado", "recibido", "saldo"];
+  const valorCol = (c, k) => {
+    switch (k) {
+      case "consecutivo": return c.consecutivo ?? "";
+      case "tipo": return c.tipo || "";
+      case "cliente": return nombreCliente(c);
+      case "mes": return c.mes ?? "";
+      case "anio": return c.anio ?? "";
+      case "fecha": return fmtFecha(c.fecha_elaboracion);
+      case "rango": return c.factura_inicial && c.factura_final ? `${c.factura_inicial}-${c.factura_final}` : "";
+      case "facturado": return Number(c.valor_facturado) || 0;
+      case "recibido": return Number(c.valor_recibido) || 0;
+      case "saldo": return Number(c.saldo) || 0;
+      case "estado": return c.estado || "";
+      default: return "";
+    }
+  };
+  let filtradas = lista.filter((c) =>
+    Object.entries(filtros).every(([k, v]) => {
+      if (!v) return true;
+      if (k === "estado" || k === "tipo") return valorCol(c, k) === v;
+      return String(valorCol(c, k)).toLowerCase().includes(String(v).toLowerCase());
+    })
+  );
+  if (orden.campo) {
+    const num = NUMERICAS.includes(orden.campo);
+    filtradas = [...filtradas].sort((a, b) => {
+      const va = valorCol(a, orden.campo), vb = valorCol(b, orden.campo);
+      return (num ? Number(va) - Number(vb) : String(va).localeCompare(String(vb))) * orden.dir;
+    });
+  }
+  const ordenarPor = (k) => setOrden((o) => ({ campo: k, dir: o.campo === k ? -o.dir : 1 }));
+  const flecha = (k) => (orden.campo === k ? (orden.dir === 1 ? " ▲" : " ▼") : "");
+  const hayFiltros = Object.values(filtros).some(Boolean) || orden.campo;
+
   return (
     <>
     <div className="cards">
@@ -194,20 +235,55 @@ export default function CuentasManager({ cuentas, mutuales }) {
       <div className="kpi"><div className="label">Mutuales</div><div className="value">{mutuales.length}</div></div>
     </div>
     <div className="card">
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-        <h2 style={{ margin: 0 }}>Cuentas de cobro ({lista.length})</h2>
-        <button className="btn-primary" onClick={nueva}>+ Nueva manual</button>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, gap: 8 }}>
+        <h2 style={{ margin: 0 }}>Cuentas de cobro ({filtradas.length}{filtradas.length !== lista.length ? ` de ${lista.length}` : ""})</h2>
+        <div style={{ display: "flex", gap: 8 }}>
+          {hayFiltros && <button className="logout" onClick={() => { setFiltros({}); setOrden({ campo: null, dir: 1 }); }}>Limpiar filtros</button>}
+          <button className="btn-primary" onClick={nueva}>+ Nueva manual</button>
+        </div>
       </div>
       <div className="tbl-wrap">
         <table>
           <thead>
             <tr>
-              <th>CC #</th><th>Tipo</th><th>Cliente / Mutual</th><th>Mes</th><th>Año</th>
-              <th>Fecha</th><th>Rango facturas</th><th>Facturado</th><th>Recibido</th><th>Saldo</th><th>Estado</th><th></th>
+              <th className="sortable" onClick={() => ordenarPor("consecutivo")}>CC #{flecha("consecutivo")}</th>
+              <th className="sortable" onClick={() => ordenarPor("tipo")}>Tipo{flecha("tipo")}</th>
+              <th className="sortable" onClick={() => ordenarPor("cliente")}>Cliente / Mutual{flecha("cliente")}</th>
+              <th className="sortable" onClick={() => ordenarPor("mes")}>Mes{flecha("mes")}</th>
+              <th className="sortable" onClick={() => ordenarPor("anio")}>Año{flecha("anio")}</th>
+              <th className="sortable" onClick={() => ordenarPor("fecha")}>Fecha{flecha("fecha")}</th>
+              <th className="sortable" onClick={() => ordenarPor("rango")}>Rango facturas{flecha("rango")}</th>
+              <th className="sortable" onClick={() => ordenarPor("facturado")}>Facturado{flecha("facturado")}</th>
+              <th className="sortable" onClick={() => ordenarPor("recibido")}>Recibido{flecha("recibido")}</th>
+              <th className="sortable" onClick={() => ordenarPor("saldo")}>Saldo{flecha("saldo")}</th>
+              <th className="sortable" onClick={() => ordenarPor("estado")}>Estado{flecha("estado")}</th>
+              <th></th>
+            </tr>
+            <tr className="filtros">
+              <th><input value={filtros.consecutivo || ""} onChange={(e) => setF("consecutivo", e.target.value)} placeholder="🔍" /></th>
+              <th>
+                <select value={filtros.tipo || ""} onChange={(e) => setF("tipo", e.target.value)}>
+                  <option value="">Todos</option><option value="regular">regular</option><option value="irregular">irregular</option>
+                </select>
+              </th>
+              <th><input value={filtros.cliente || ""} onChange={(e) => setF("cliente", e.target.value)} placeholder="🔍" /></th>
+              <th><input value={filtros.mes || ""} onChange={(e) => setF("mes", e.target.value)} placeholder="🔍" /></th>
+              <th><input value={filtros.anio || ""} onChange={(e) => setF("anio", e.target.value)} placeholder="🔍" /></th>
+              <th><input value={filtros.fecha || ""} onChange={(e) => setF("fecha", e.target.value)} placeholder="dd/mm/aaaa" /></th>
+              <th><input value={filtros.rango || ""} onChange={(e) => setF("rango", e.target.value)} placeholder="🔍" /></th>
+              <th><input value={filtros.facturado || ""} onChange={(e) => setF("facturado", e.target.value)} placeholder="🔍" /></th>
+              <th><input value={filtros.recibido || ""} onChange={(e) => setF("recibido", e.target.value)} placeholder="🔍" /></th>
+              <th><input value={filtros.saldo || ""} onChange={(e) => setF("saldo", e.target.value)} placeholder="🔍" /></th>
+              <th>
+                <select value={filtros.estado || ""} onChange={(e) => setF("estado", e.target.value)}>
+                  <option value="">Todos</option><option value="pendiente">pendiente</option><option value="parcial">parcial</option><option value="pago">pago</option>
+                </select>
+              </th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
-            {lista.map((c) => (
+            {filtradas.map((c) => (
               <tr key={c.id}>
                 <td>{c.consecutivo}</td>
                 <td><span className={"tag " + (c.tipo === "irregular" ? "irregular" : "")}>{c.tipo}</span></td>
@@ -336,6 +412,10 @@ export default function CuentasManager({ cuentas, mutuales }) {
         .resumen-pago{display:flex;gap:20px;flex-wrap:wrap;padding:10px;background:#f8fafc;border-radius:8px;font-size:13px}
         .form-pago{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;align-items:center}
         .form-pago input{padding:8px 10px;border:1px solid #cbd5e1;border-radius:7px;font-size:13px}
+        .sortable{cursor:pointer;user-select:none;white-space:nowrap}
+        .sortable:hover{background:#334155}
+        tr.filtros th{background:#eef2f7;position:sticky;top:31px;padding:4px 6px;z-index:1}
+        tr.filtros input,tr.filtros select{width:100%;min-width:55px;padding:4px 6px;border:1px solid #cbd5e1;border-radius:5px;font-size:11px;font-weight:400;color:#1a1a2e}
         .mini{background:#eff6ff;color:#1e40af;border:1px solid #93c5fd;border-radius:6px;padding:3px 10px;font-size:11px;font-weight:600;cursor:pointer}
         .estado-sel{border:1px solid #cbd5e1;border-radius:999px;padding:3px 8px;font-size:11px;font-weight:600;cursor:pointer}
         .estado-sel.pago{background:#dcfce7;color:#166534;border-color:#86efac}
