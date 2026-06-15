@@ -7,58 +7,53 @@ const CUAT = { 1: "1° cuat (Ene–Abr)", 2: "2° cuat (May–Ago)", 3: "3° cua
 const cuatDe = (mes) => (mes ? Math.ceil(mes / 4) : 0);
 
 export default function FacturasVenta() {
-  const [facturas, setFacturas] = useState([]);
+  const [cuentas, setCuentas] = useState([]);
   const [params, setParams] = useState({ iva: 0.19, admin_socia: 0.13, admin_no_socia: 0.17 });
   const [err, setErr] = useState("");
 
   const [fAnio, setFAnio] = useState("");
-  const [fMutual, setFMutual] = useState("");
+  const [fCliente, setFCliente] = useState("");
   const [fCuat, setFCuat] = useState("");
 
   useEffect(() => {
     fetch("/api/facturas-venta", { cache: "no-store" })
       .then((r) => r.json())
-      .then((d) => { if (d.error) throw new Error(d.error); setFacturas(d.facturas || []); if (d.params) setParams(d.params); })
+      .then((d) => { if (d.error) throw new Error(d.error); setCuentas(d.cuentas || []); if (d.params) setParams(d.params); })
       .catch((e) => setErr(e.message));
   }, []);
 
-  // Calcular desglose por factura
-  const filas = useMemo(() => facturas.map((f) => {
-    const base = f.valor / (1 + params.iva);
-    const iva = f.valor - base;
-    const pctAdmin = f.es_socia ? params.admin_socia : params.admin_no_socia;
-    const admin = base * pctAdmin;
-    const reserva = base - admin;
-    return { ...f, base, iva, admin, reserva, cuat: cuatDe(f.mes) };
-  }), [facturas, params]);
+  // Desglose por cuenta de cobro (cliente/intermediario)
+  const filas = useMemo(() => cuentas.map((c) => {
+    const base = c.valor / (1 + params.iva);
+    const iva = c.valor - base;
+    const pctAdmin = c.es_socia ? params.admin_socia : params.admin_no_socia;
+    const admin = c.esMutual ? base * pctAdmin : 0;
+    const reserva = c.esMutual ? base - admin : 0;
+    return { ...c, base, iva, admin, reserva, cuat: cuatDe(c.mes) };
+  }), [cuentas, params]);
 
   const anios = [...new Set(filas.map((f) => f.anio).filter(Boolean))].sort((a, b) => b - a);
-  const mutuales = [...new Set(filas.map((f) => f.mutual))].sort();
+  const clientes = [...new Set(filas.map((f) => f.cliente))].sort();
 
   const filtradas = filas.filter((f) =>
     (!fAnio || String(f.anio) === fAnio) &&
-    (!fMutual || f.mutual === fMutual) &&
+    (!fCliente || f.cliente === fCliente) &&
     (!fCuat || String(f.cuat) === fCuat)
   );
 
-  // Resumen IVA por cuatrimestre (del año/filtros seleccionados)
+  // Resumen IVA por cuatrimestre
   const resumen = [1, 2, 3].map((c) => {
-    const grupo = filtradas.filter((f) => f.cuat === c);
-    return {
-      cuat: c, n: grupo.length,
-      base: grupo.reduce((s, f) => s + f.base, 0),
-      iva: grupo.reduce((s, f) => s + f.iva, 0),
-      reserva: grupo.reduce((s, f) => s + f.reserva, 0),
-    };
+    const g = filtradas.filter((f) => f.cuat === c);
+    return { cuat: c, n: g.length, base: g.reduce((s, f) => s + f.base, 0), iva: g.reduce((s, f) => s + f.iva, 0), reserva: g.reduce((s, f) => s + f.reserva, 0) };
   });
-  const totReserva = filtradas.reduce((s, f) => s + f.reserva, 0);
   const totIva = filtradas.reduce((s, f) => s + f.iva, 0);
+  const totReserva = filtradas.reduce((s, f) => s + f.reserva, 0);
 
   return (
     <div className="wrap">
       <div className="header">
         <div className="header-row">
-          <div><h1>Facturas de venta</h1><p>Reserva individual e IVA por factura (control contable)</p></div>
+          <div><h1>Facturas de venta</h1><p>Reserva e IVA por cliente/intermediario (control contable)</p></div>
           <div style={{ display: "flex", gap: 8 }}>
             <a className="logout" href="/">← Tablero</a>
             <LogoutButton />
@@ -68,11 +63,6 @@ export default function FacturasVenta() {
 
       {err && <div className="err">Error: {err}</div>}
 
-      {filas.length === 0 && !err && (
-        <div className="card"><p style={{ fontSize: 13, color: "#64748b" }}>Aún no hay facturas por asociado registradas. Aparecerán a medida que generes lotes desde el módulo de facturación. (El histórico anterior está en tu Excel.)</p></div>
-      )}
-
-      {/* Filtros */}
       <div className="card" style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
         <label className="fld">Año
           <select value={fAnio} onChange={(e) => setFAnio(e.target.value)}>
@@ -80,10 +70,10 @@ export default function FacturasVenta() {
             {anios.map((a) => <option key={a} value={a}>{a}</option>)}
           </select>
         </label>
-        <label className="fld">Mutual
-          <select value={fMutual} onChange={(e) => setFMutual(e.target.value)}>
-            <option value="">Todas</option>
-            {mutuales.map((m) => <option key={m} value={m}>{m}</option>)}
+        <label className="fld">Cliente / Mutual
+          <select value={fCliente} onChange={(e) => setFCliente(e.target.value)}>
+            <option value="">Todos</option>
+            {clientes.map((m) => <option key={m} value={m}>{m}</option>)}
           </select>
         </label>
         <label className="fld">Cuatrimestre
@@ -100,35 +90,35 @@ export default function FacturasVenta() {
           <div className={"kpi cuat-" + r.cuat} key={r.cuat}>
             <div className="label">{CUAT[r.cuat]}</div>
             <div className="value">{fmtPesos(r.iva)}</div>
-            <div className="sub">IVA · {r.n} facturas · base {fmtPesos(r.base)}</div>
+            <div className="sub">IVA · {r.n} cuentas · base {fmtPesos(r.base)}</div>
           </div>
         ))}
         <div className="kpi"><div className="label">Total IVA</div><div className="value">{fmtPesos(totIva)}</div></div>
         <div className="kpi"><div className="label">Total reserva</div><div className="value">{fmtPesos(totReserva)}</div></div>
       </div>
 
-      {/* Tabla detalle */}
+      {/* Detalle por cliente/intermediario */}
       <div className="card">
-        <h2>Detalle por factura ({filtradas.length})</h2>
+        <h2>Por cliente / intermediario ({filtradas.length})</h2>
         <div className="tbl-wrap">
           <table>
             <thead>
-              <tr><th>FV</th><th>Fecha</th><th>Cuat.</th><th>Mutual</th><th>Cédula</th><th>Nombre</th><th>Valor c/IVA</th><th>Base</th><th>IVA</th><th>Admin</th><th>Reserva</th></tr>
+              <tr><th>CC</th><th>Fecha</th><th>Cuat.</th><th>Cliente / Mutual</th><th>Rango facturas</th><th>N°</th><th>Valor c/IVA</th><th>Base</th><th>IVA</th><th>Admin</th><th>Reserva</th></tr>
             </thead>
             <tbody>
               {filtradas.map((f) => (
                 <tr key={f.id} className={"cuat-row-" + f.cuat}>
-                  <td>FV-2-{f.fv}</td>
+                  <td>{f.cc}</td>
                   <td>{fmtFecha(f.fecha)}</td>
                   <td><span className={"cuat-tag cuat-" + f.cuat}>{f.cuat || "—"}</span></td>
-                  <td>{f.mutual}</td>
-                  <td>{f.cedula}</td>
-                  <td>{f.nombre}</td>
+                  <td>{f.cliente}</td>
+                  <td>{f.fi && f.ff ? `${f.fi}–${f.ff}` : "—"}</td>
+                  <td className="num">{f.num ?? ""}</td>
                   <td className="num">{fmtPesos(f.valor)}</td>
                   <td className="num">{fmtPesos(f.base)}</td>
                   <td className="num">{fmtPesos(f.iva)}</td>
-                  <td className="num">{fmtPesos(f.admin)}</td>
-                  <td className="num"><b>{fmtPesos(f.reserva)}</b></td>
+                  <td className="num">{f.esMutual ? fmtPesos(f.admin) : "—"}</td>
+                  <td className="num"><b>{f.esMutual ? fmtPesos(f.reserva) : "—"}</b></td>
                 </tr>
               ))}
             </tbody>
