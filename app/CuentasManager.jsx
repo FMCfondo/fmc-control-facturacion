@@ -6,7 +6,7 @@ const VACIA = {
   tipo: "regular", mutual_id: "", cliente_nombre: "", consecutivo: "",
   mes: "", anio: new Date().getFullYear(), fecha_elaboracion: "",
   factura_inicial: "", factura_final: "", valor_facturado: "", valor_recibido: "",
-  estado: "pendiente", notas: "",
+  anticipos: "", estado: "pendiente", notas: "",
 };
 
 export default function CuentasManager({ cuentas, mutuales }) {
@@ -53,7 +53,8 @@ export default function CuentasManager({ cuentas, mutuales }) {
       consecutivo: c.consecutivo ?? "", mes: c.mes ?? "", anio: c.anio ?? "",
       fecha_elaboracion: c.fecha_elaboracion || "", factura_inicial: c.factura_inicial ?? "",
       factura_final: c.factura_final ?? "", valor_facturado: c.valor_facturado ?? "",
-      valor_recibido: c.valor_recibido ?? "", estado: c.estado || "pendiente", notas: c.notas || "",
+      valor_recibido: c.valor_recibido ?? "", anticipos: c.anticipos ?? "",
+      estado: c.estado || "pendiente", notas: c.notas || "",
     });
     setEditId(c.id); setMsg(""); setAbierto(true);
   }
@@ -109,7 +110,7 @@ export default function CuentasManager({ cuentas, mutuales }) {
     try {
       const body = { ...form };
       // normalizar números/relaciones
-      ["consecutivo","mes","anio","factura_inicial","factura_final","valor_facturado","valor_recibido"]
+      ["consecutivo","mes","anio","factura_inicial","factura_final","valor_facturado","valor_recibido","anticipos"]
         .forEach((k) => { body[k] = body[k] === "" ? null : Number(body[k]); });
       if (body.tipo === "irregular") body.mutual_id = null;
       else body.cliente_nombre = null;
@@ -345,6 +346,7 @@ export default function CuentasManager({ cuentas, mutuales }) {
               <label>Factura final<input type="number" value={form.factura_final} onChange={(e) => set("factura_final", e.target.value)} /></label>
               <label>Valor facturado<input type="number" step="0.01" value={form.valor_facturado} onChange={(e) => set("valor_facturado", e.target.value)} /></label>
               <label>Valor recibido<input type="number" step="0.01" value={form.valor_recibido} onChange={(e) => set("valor_recibido", e.target.value)} /></label>
+              <label>Anticipos / saldo a favor<input type="number" step="0.01" value={form.anticipos} onChange={(e) => set("anticipos", e.target.value)} /></label>
               <label>Estado
                 <select value={form.estado} onChange={(e) => set("estado", e.target.value)}>
                   <option value="pendiente">Pendiente</option>

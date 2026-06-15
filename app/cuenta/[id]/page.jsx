@@ -42,7 +42,8 @@ export default function CuentaCobroDoc() {
     subtotal = base;
   }
   const iva = subtotal * 0.19;
-  const total = subtotal + iva;
+  const anticipos = Math.abs(Number(cuenta.anticipos) || 0);
+  const total = subtotal + iva - anticipos;
 
   return (
     <div className="doc-wrap">
@@ -53,11 +54,14 @@ export default function CuentaCobroDoc() {
 
       <div className="hoja">
         <div className="enc">
-          <div>
-            <div className="titulo">CUENTA DE COBRO</div>
-            <div className="fondo-nom">{FONDO.nombre}</div>
-            <div className="fondo-info">
-              {FONDO.correo}<br />{FONDO.direccion}<br />NIT: {FONDO.nit}<br />{FONDO.telefono}
+          <div className="enc-izq">
+            <img src="/logo.png" alt="" className="logo" onError={(e) => { e.target.style.display = "none"; }} />
+            <div>
+              <div className="titulo">CUENTA DE COBRO</div>
+              <div className="fondo-nom">{FONDO.nombre}</div>
+              <div className="fondo-info">
+                {FONDO.correo}<br />{FONDO.direccion}<br />NIT: {FONDO.nit}<br />{FONDO.telefono}
+              </div>
             </div>
           </div>
           <div className="cc-box">
@@ -104,6 +108,7 @@ export default function CuentaCobroDoc() {
             <tbody>
               <tr><td>SUBTOTAL:</td><td className="r">{fmtPesos(subtotal)}</td></tr>
               <tr><td>IVA 19%:</td><td className="r">{fmtPesos(iva)}</td></tr>
+              {anticipos > 0 && <tr><td>ANTICIPOS:</td><td className="r">−{fmtPesos(anticipos)}</td></tr>}
               <tr className="grande"><td>TOTAL:</td><td className="r">{fmtPesos(total)}</td></tr>
             </tbody>
           </table>
@@ -122,6 +127,8 @@ export default function CuentaCobroDoc() {
         .btn-sec{background:#e2e8f0;color:#334155;border-radius:8px;padding:10px 16px;text-decoration:none;font-size:14px;font-weight:600}
         .hoja{background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:32px}
         .enc{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #0a1628;padding-bottom:16px;margin-bottom:16px}
+        .enc-izq{display:flex;gap:16px;align-items:flex-start}
+        .logo{max-height:70px;max-width:120px;object-fit:contain}
         .titulo{font-size:22px;font-weight:800;color:#0a1628;letter-spacing:1px}
         .fondo-nom{font-weight:700;margin-top:8px;font-size:14px}
         .fondo-info{font-size:11px;color:#475569;margin-top:4px;line-height:1.5}

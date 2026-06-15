@@ -9,7 +9,7 @@ const CAMPOS = [
   "cliente_direccion", "cliente_correo", "mes", "anio", "fecha_elaboracion",
   "fecha_vencimiento", "factura_inicial", "factura_final", "num_facturas",
   "valor_facturado", "valor_recibido", "reserva_individual", "administracion",
-  "iva", "estado", "documento_nombre", "notas",
+  "iva", "anticipos", "estado", "documento_nombre", "notas",
 ];
 
 function limpiar(body) {
