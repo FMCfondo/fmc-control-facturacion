@@ -1,6 +1,7 @@
 import { supabaseAdmin } from "../lib/supabase";
-import { fmtPesos, fmtFecha } from "../lib/format";
+import { fmtPesos } from "../lib/format";
 import LogoutButton from "./LogoutButton";
+import CuentasManager from "./CuentasManager";
 
 // Server component: lee directo de Supabase en el servidor (service role, nunca llega al navegador).
 // Cuando agreguemos Supabase Auth, esto pasará a usar la sesión del usuario.
@@ -13,7 +14,7 @@ async function getData() {
       .order("anio", { ascending: false })
       .order("mes", { ascending: false, nullsFirst: false })
       .order("consecutivo", { ascending: false }),
-    sb.from("mutuales").select("nombre,nombre_corto,es_socia"),
+    sb.from("mutuales").select("id,nombre,nombre_corto,es_socia").order("nombre"),
   ]);
   if (ccRes.error) throw ccRes.error;
   return { cuentas: ccRes.data || [], mutuales: mutRes.data || [] };
@@ -58,50 +59,18 @@ function Contenido({ cuentas, mutuales }) {
   const recibido = cuentas.reduce((s, c) => s + (Number(c.valor_recibido) || 0), 0);
   const saldo = total - recibido;
   const pendientes = cuentas.filter((c) => c.estado !== "pago").length;
-  const sociasMap = Object.fromEntries((mutuales || []).map((m) => [m.nombre, m.es_socia]));
 
   return (
     <>
       <div className="cards">
-        <Kpi label="Cuentas de cobro" value={cuentas.length} sub="registros migrados" />
+        <Kpi label="Cuentas de cobro" value={cuentas.length} />
         <Kpi label="Total facturado" value={fmtPesos(total)} />
         <Kpi label="Total recibido" value={fmtPesos(recibido)} />
         <Kpi label="Saldo pendiente" value={fmtPesos(saldo)} sub={`${pendientes} sin saldar`} />
         <Kpi label="Mutuales" value={mutuales.length} />
       </div>
 
-      <div className="card">
-        <h2>Cuentas de cobro ({cuentas.length})</h2>
-        <div className="tbl-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>CC #</th><th>Tipo</th><th>Cliente / Mutual</th><th>Mes</th><th>Año</th>
-                <th>Fecha</th><th>Rango facturas</th><th>N°</th>
-                <th>Facturado</th><th>Recibido</th><th>Saldo</th><th>Estado</th>
-              </tr>
-            </thead>
-            <tbody>
-              {cuentas.map((c) => (
-                <tr key={c.id}>
-                  <td>{c.consecutivo}</td>
-                  <td><span className={"tag " + (c.tipo === "irregular" ? "irregular" : "")}>{c.tipo}</span></td>
-                  <td>{c.cliente_nombre || c.documento_nombre?.split("MUTUAL ")[1] || "—"}</td>
-                  <td>{c.mes ?? ""}</td>
-                  <td>{c.anio}</td>
-                  <td>{fmtFecha(c.fecha_elaboracion)}</td>
-                  <td>{c.factura_inicial && c.factura_final ? `${c.factura_inicial}–${c.factura_final}` : "—"}</td>
-                  <td className="num">{c.num_facturas ?? ""}</td>
-                  <td className="num">{fmtPesos(c.valor_facturado)}</td>
-                  <td className="num">{fmtPesos(c.valor_recibido)}</td>
-                  <td className="num">{fmtPesos(c.saldo)}</td>
-                  <td><span className={"badge " + c.estado}>{c.estado}</span></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <CuentasManager cuentas={cuentas} mutuales={mutuales} />
     </>
   );
 }
