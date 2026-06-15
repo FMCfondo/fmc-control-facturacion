@@ -38,6 +38,21 @@ export default function CuentasManager({ cuentas, mutuales }) {
 
   function set(k, v) { setForm((f) => ({ ...f, [k]: v })); }
 
+  // Actualiza el estado directamente desde la lista desplegable de la fila.
+  async function cambiarEstado(id, estado) {
+    try {
+      const res = await fetch("/api/cuenta-cobro", {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, estado }),
+      });
+      const out = await res.json();
+      if (!res.ok) throw new Error(out.error);
+      router.refresh();
+    } catch (e) {
+      alert("No se pudo cambiar el estado: " + e.message);
+    }
+  }
+
   async function guardar(e) {
     e.preventDefault();
     setGuardando(true); setMsg("");
@@ -111,7 +126,14 @@ export default function CuentasManager({ cuentas, mutuales }) {
                 <td className="num">{fmtPesos(c.valor_facturado)}</td>
                 <td className="num">{fmtPesos(c.valor_recibido)}</td>
                 <td className="num">{fmtPesos(c.saldo)}</td>
-                <td><span className={"badge " + c.estado}>{c.estado}</span></td>
+                <td>
+                  <select className={"estado-sel " + c.estado} value={c.estado}
+                    onChange={(e) => cambiarEstado(c.id, e.target.value)}>
+                    <option value="pendiente">pendiente</option>
+                    <option value="parcial">parcial</option>
+                    <option value="pago">pago</option>
+                  </select>
+                </td>
                 <td><button className="mini" onClick={() => editar(c)}>Editar</button></td>
               </tr>
             ))}
@@ -172,6 +194,10 @@ export default function CuentasManager({ cuentas, mutuales }) {
 
       <style>{`
         .mini{background:#eff6ff;color:#1e40af;border:1px solid #93c5fd;border-radius:6px;padding:3px 10px;font-size:11px;font-weight:600;cursor:pointer}
+        .estado-sel{border:1px solid #cbd5e1;border-radius:999px;padding:3px 8px;font-size:11px;font-weight:600;cursor:pointer}
+        .estado-sel.pago{background:#dcfce7;color:#166534;border-color:#86efac}
+        .estado-sel.pendiente{background:#fef9c3;color:#854d0e;border-color:#fde68a}
+        .estado-sel.parcial{background:#dbeafe;color:#1e40af;border-color:#93c5fd}
         .modal-bg{position:fixed;inset:0;background:rgba(10,22,40,.5);display:flex;align-items:center;justify-content:center;padding:16px;z-index:50}
         .modal{background:#fff;border-radius:12px;padding:24px;width:100%;max-width:620px;max-height:90vh;overflow:auto}
         .modal h3{margin-bottom:16px;color:#0a1628}
