@@ -28,6 +28,7 @@ export default function CuentasManager({ cuentas, mutuales }) {
   const [editId, setEditId] = useState(null);
   const [msg, setMsg] = useState("");
   const [guardando, setGuardando] = useState(false);
+  const [modalItems, setModalItems] = useState([]); // ítems para cuentas irregulares
 
   // Pagos
   const [pagosCuenta, setPagosCuenta] = useState(null); // cuenta seleccionada
@@ -45,9 +46,19 @@ export default function CuentasManager({ cuentas, mutuales }) {
     c.tipo === "irregular" ? (c.cliente_nombre || "—") : (mapNombre[c.mutual_id] || c.cliente_nombre || "—");
 
   function nueva() {
-    setForm(VACIA); setEditId(null); setMsg(""); setAbierto(true);
+    setForm(VACIA); setEditId(null); setMsg(""); setModalItems([]); setAbierto(true);
   }
-  function editar(c) {
+  async function editar(c) {
+    setModalItems([]);
+    if (c.tipo === "irregular") {
+      try {
+        const r = await fetch(`/api/documento?id=${c.id}`, { cache: "no-store" });
+        const d = await r.json();
+        if (r.ok && d.items) setModalItems(d.items.map((it) => ({
+          cantidad: it.cantidad, codigo: it.codigo || "", descripcion: it.descripcion, valor_unitario: it.valor_unitario,
+        })));
+      } catch {}
+    }
     setForm({
       tipo: c.tipo || "regular", mutual_id: c.mutual_id || "", cliente_nombre: c.cliente_nombre || "",
       consecutivo: c.consecutivo ?? "", mes: c.mes ?? "", anio: c.anio ?? "",
@@ -61,6 +72,12 @@ export default function CuentasManager({ cuentas, mutuales }) {
   }
 
   function set(k, v) { setForm((f) => ({ ...f, [k]: v })); }
+
+  // Ítems (cuentas irregulares)
+  const addItem = () => setModalItems((x) => [...x, { cantidad: 1, codigo: "", descripcion: "", valor_unitario: "" }]);
+  const updItem = (i, k, v) => setModalItems((x) => x.map((it, j) => (j === i ? { ...it, [k]: v } : it)));
+  const delItem = (i) => setModalItems((x) => x.filter((_, j) => j !== i));
+  const subtotalItems = modalItems.reduce((s, it) => s + (Number(it.cantidad) || 0) * (Number(it.valor_unitario) || 0), 0);
 
   const borrarTodosPagos = (id) =>
     fetch("/api/pagos", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cuenta_cobro_id: id }) });
@@ -113,8 +130,16 @@ export default function CuentasManager({ cuentas, mutuales }) {
       // normalizar números/relaciones
       ["consecutivo","mes","anio","factura_inicial","factura_final","valor_facturado","valor_recibido","anticipos"]
         .forEach((k) => { body[k] = body[k] === "" ? null : Number(body[k]); });
-      if (body.tipo === "irregular") body.mutual_id = null;
-      else body.cliente_nombre = null;
+      if (body.tipo === "irregular") {
+        body.mutual_id = null;
+        body.items = modalItems;
+        // Si hay ítems, el valor facturado = subtotal + IVA (19%).
+        if (modalItems.some((it) => it.descripcion)) {
+          body.valor_facturado = Math.round(subtotalItems * 1.19 * 100) / 100;
+        }
+      } else {
+        body.cliente_nombre = null;
+      }
       // Derivar estado automáticamente según el valor recibido vs facturado.
       const vf = Number(body.valor_facturado) || 0;
       const vr = Number(body.valor_recibido) || 0;
@@ -358,6 +383,31 @@ export default function CuentasManager({ cuentas, mutuales }) {
               </label>
               <label style={{ gridColumn: "1 / -1" }}>Notas<input value={form.notas} onChange={(e) => set("notas", e.target.value)} /></label>
             </div>
+
+            {form.tipo === "irregular" && (
+              <div className="items-edit">
+                <div className="items-head">
+                  <b>Ítems de la cuenta de cobro</b>
+                  <button type="button" className="mini" onClick={addItem}>+ Agregar ítem</button>
+                </div>
+                {modalItems.length === 0 && <p className="hint2">Sin ítems. El valor facturado se calculará como subtotal + IVA 19%.</p>}
+                {modalItems.map((it, i) => (
+                  <div className="item-row" key={i}>
+                    <input style={{ width: 50 }} type="number" placeholder="Cant" value={it.cantidad} onChange={(e) => updItem(i, "cantidad", e.target.value)} />
+                    <input style={{ width: 70 }} placeholder="Código" value={it.codigo} onChange={(e) => updItem(i, "codigo", e.target.value)} />
+                    <input style={{ flex: 1 }} placeholder="Descripción" value={it.descripcion} onChange={(e) => updItem(i, "descripcion", e.target.value)} />
+                    <input style={{ width: 110 }} type="number" step="0.01" placeholder="Vlr unitario" value={it.valor_unitario} onChange={(e) => updItem(i, "valor_unitario", e.target.value)} />
+                    <button type="button" className="del" style={{ padding: "4px 8px" }} onClick={() => delItem(i)}>✕</button>
+                  </div>
+                ))}
+                {modalItems.length > 0 && (
+                  <div className="items-tot">
+                    Subtotal: {fmtPesos(subtotalItems)} · IVA: {fmtPesos(subtotalItems * 0.19)} · <b>Total: {fmtPesos(subtotalItems * 1.19)}</b>
+                  </div>
+                )}
+              </div>
+            )}
+
             {msg && <div className="err" style={{ marginTop: 10 }}>{msg}</div>}
             <div className="modal-acc">
               {editId && <button type="button" className="del" onClick={borrar} disabled={guardando}>Borrar</button>}
@@ -430,6 +480,12 @@ export default function CuentasManager({ cuentas, mutuales }) {
         .modal{background:#fff;border-radius:12px;padding:24px;width:100%;max-width:620px;max-height:90vh;overflow:auto}
         .modal h3{margin-bottom:16px;color:#0a1628}
         .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+        .items-edit{margin-top:16px;border-top:1px solid #e2e8f0;padding-top:12px}
+        .items-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+        .item-row{display:flex;gap:6px;margin-bottom:6px;align-items:center}
+        .item-row input{padding:6px 8px;border:1px solid #cbd5e1;border-radius:6px;font-size:12px}
+        .items-tot{text-align:right;font-size:12px;margin-top:6px;color:#334155}
+        .hint2{font-size:11px;color:#94a3b8;margin:4px 0}
         .modal label{display:flex;flex-direction:column;font-size:12px;font-weight:600;color:#334155;gap:5px}
         .modal input,.modal select{padding:8px 10px;border:1px solid #cbd5e1;border-radius:7px;font-size:13px;font-weight:400}
         .modal-acc{display:flex;align-items:center;gap:8px;margin-top:18px}

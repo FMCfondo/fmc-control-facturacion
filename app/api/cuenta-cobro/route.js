@@ -45,9 +45,29 @@ export async function POST(request) {
     if (existe) return NextResponse.json({ error: `El consecutivo ${datos.consecutivo} ya existe.` }, { status: 409 });
     const { data, error } = await sb.from("cuentas_cobro").insert(datos).select("id").single();
     if (error) throw error;
+    await guardarItems(sb, data.id, body.items);
     return NextResponse.json({ ok: true, id: data.id });
   } catch (e) {
     return NextResponse.json({ error: e.message }, { status: 500 });
+  }
+}
+
+// Inserta los ítems (reemplazando los existentes) de una cuenta de cobro irregular.
+async function guardarItems(sb, cuentaId, items) {
+  if (!Array.isArray(items)) return;
+  await sb.from("items_cuenta_cobro").delete().eq("cuenta_cobro_id", cuentaId);
+  const filas = items
+    .filter((it) => it && it.descripcion)
+    .map((it) => ({
+      cuenta_cobro_id: cuentaId,
+      cantidad: Number(it.cantidad) || 1,
+      codigo: it.codigo || null,
+      descripcion: it.descripcion,
+      valor_unitario: Number(it.valor_unitario) || 0,
+    }));
+  if (filas.length) {
+    const { error } = await sb.from("items_cuenta_cobro").insert(filas);
+    if (error) throw error;
   }
 }
 
@@ -60,6 +80,7 @@ export async function PATCH(request) {
     const sb = supabaseAdmin();
     const { error } = await sb.from("cuentas_cobro").update(datos).eq("id", body.id);
     if (error) throw error;
+    if (body.items !== undefined) await guardarItems(sb, body.id, body.items);
     return NextResponse.json({ ok: true });
   } catch (e) {
     return NextResponse.json({ error: e.message }, { status: 500 });
