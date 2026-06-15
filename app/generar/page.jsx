@@ -100,16 +100,17 @@ export default function Generar() {
         reserva += d.reservaIndividual; admin += d.administracion; iva += d.iva;
       });
 
-      // 3. Vencimiento (+8 días) y nombre de documento
+      // 3. Vencimiento = último día del mes de elaboración; nombre de documento
       const d = new Date(fecha + "T12:00:00");
-      const venc = new Date(d); venc.setDate(venc.getDate() + 8);
+      const venc = new Date(d.getFullYear(), d.getMonth() + 1, 0);
       const docNombre = `CC-${cc} -- (${MESES_ABBR[d.getMonth()]}${d.getFullYear()}) CUENTA DE COBRO ${mutual.nombre_corto}`;
 
       // 4. Registrar en la base de datos
       const cuenta = {
         consecutivo: Number(cc), tipo: "regular", mutual_id: mutual.id,
         mes: d.getMonth() + 1, anio: d.getFullYear(),
-        fecha_elaboracion: fecha, fecha_vencimiento: venc.toISOString().slice(0, 10),
+        fecha_elaboracion: fecha,
+        fecha_vencimiento: `${venc.getFullYear()}-${String(venc.getMonth() + 1).padStart(2, "0")}-${String(venc.getDate()).padStart(2, "0")}`,
         factura_inicial: Number(factIni), factura_final: factFin, num_facturas: records.length,
         valor_facturado: round2(total), reserva_individual: round2(reserva),
         administracion: round2(admin), iva: round2(iva),
