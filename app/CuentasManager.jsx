@@ -304,6 +304,7 @@ export default function CuentasManager({ cuentas, mutuales }) {
                   </select>
                 </td>
                 <td style={{ whiteSpace: "nowrap" }}>
+                  <a className="mini" href={`/cuenta/${c.id}`} target="_blank" rel="noreferrer">Cuenta</a>{" "}
                   <button className="mini" onClick={() => abrirPagos(c)}>Pagos</button>{" "}
                   <button className="mini" onClick={() => editar(c)}>Editar</button>
                 </td>
@@ -416,7 +417,7 @@ export default function CuentasManager({ cuentas, mutuales }) {
         .sortable:hover{background:#334155}
         tr.filtros th{background:#eef2f7;position:sticky;top:31px;padding:4px 6px;z-index:1}
         tr.filtros input,tr.filtros select{width:100%;min-width:55px;padding:4px 6px;border:1px solid #cbd5e1;border-radius:5px;font-size:11px;font-weight:400;color:#1a1a2e}
-        .mini{background:#eff6ff;color:#1e40af;border:1px solid #93c5fd;border-radius:6px;padding:3px 10px;font-size:11px;font-weight:600;cursor:pointer}
+        .mini{background:#eff6ff;color:#1e40af;border:1px solid #93c5fd;border-radius:6px;padding:3px 10px;font-size:11px;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block}
         .estado-sel{border:1px solid #cbd5e1;border-radius:999px;padding:3px 8px;font-size:11px;font-weight:600;cursor:pointer}
         .estado-sel.pago{background:#dcfce7;color:#166534;border-color:#86efac}
         .estado-sel.pendiente{background:#fef9c3;color:#854d0e;border-color:#fde68a}
