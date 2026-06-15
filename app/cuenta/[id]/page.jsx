@@ -55,7 +55,7 @@ export default function CuentaCobroDoc() {
       <div className="hoja">
         <div className="enc">
           <div className="enc-izq">
-            <img src="/FMC-LOGO.png" alt="" className="logo" onError={(e) => { e.target.style.display = "none"; }} />
+            <img src="/FMC-LOGO.jpeg" alt="" className="logo" onError={(e) => { e.target.style.display = "none"; }} />
             <div>
               <div className="titulo">CUENTA DE COBRO</div>
               <div className="fondo-nom">{FONDO.nombre}</div>
@@ -127,8 +127,8 @@ export default function CuentaCobroDoc() {
         .btn-sec{background:#e2e8f0;color:#334155;border-radius:8px;padding:10px 16px;text-decoration:none;font-size:14px;font-weight:600}
         .hoja{background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:32px}
         .enc{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #0a1628;padding-bottom:16px;margin-bottom:16px}
-        .enc-izq{display:flex;gap:16px;align-items:flex-start}
-        .logo{max-height:70px;max-width:120px;object-fit:contain}
+        .enc-izq{display:flex;gap:20px;align-items:center}
+        .logo{max-height:130px;max-width:230px;object-fit:contain}
         .titulo{font-size:22px;font-weight:800;color:#0a1628;letter-spacing:1px}
         .fondo-nom{font-weight:700;margin-top:8px;font-size:14px}
         .fondo-info{font-size:11px;color:#475569;margin-top:4px;line-height:1.5}
