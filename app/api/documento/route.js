@@ -19,8 +19,9 @@ export async function GET(request) {
       mutual = data;
     }
     const { data: items } = await sb.from("items_cuenta_cobro").select("*").eq("cuenta_cobro_id", id);
+    const { data: facturas } = await sb.from("facturas_siigo").select("*").eq("cuenta_cobro_id", id).order("consecutivo");
 
-    return NextResponse.json({ cuenta, mutual, items: items || [] });
+    return NextResponse.json({ cuenta, mutual, items: items || [], facturas: facturas || [] });
   } catch (e) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }

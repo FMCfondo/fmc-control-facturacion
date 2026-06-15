@@ -10,6 +10,8 @@ export default function CuentaCobroDoc() {
   const { id } = useParams();
   const [data, setData] = useState(null);
   const [err, setErr] = useState("");
+  const [impr, setImpr] = useState("unido"); // unido | cuenta | anexo
+  const imprimir = (m) => { setImpr(m); setTimeout(() => window.print(), 60); };
 
   useEffect(() => {
     fetch(`/api/documento?id=${id}`, { cache: "no-store" })
@@ -21,7 +23,9 @@ export default function CuentaCobroDoc() {
   if (err) return <div style={{ padding: 40 }}>Error: {err}</div>;
   if (!data) return <div style={{ padding: 40 }}>Cargando…</div>;
 
-  const { cuenta, mutual, items } = data;
+  const { cuenta, mutual, items, facturas } = data;
+  const hayAnexo = facturas && facturas.length > 0;
+  const totalAnexo = (facturas || []).reduce((s, f) => s + Number(f.valor_comision || 0), 0);
 
   // Cliente
   const cli = mutual
@@ -49,10 +53,14 @@ export default function CuentaCobroDoc() {
     <div className="doc-wrap">
       <div className="no-print barra">
         <a href="/" className="btn-sec">← Volver</a>
-        <button className="btn-print" onClick={() => window.print()}>🖨 Imprimir / Guardar PDF</button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button className="btn-print" onClick={() => imprimir("unido")}>🖨 Documento unido</button>
+          <button className="btn-sec" onClick={() => imprimir("cuenta")}>Solo cuenta de cobro</button>
+          {hayAnexo && <button className="btn-sec" onClick={() => imprimir("anexo")}>Solo anexo</button>}
+        </div>
       </div>
 
-      <div className="hoja">
+      <div className={"hoja " + (impr === "anexo" ? "oculto-print" : "")}>
         <div className="enc">
           <div className="enc-izq">
             <img src="/FMC-LOGO.jpeg" alt="" className="logo" onError={(e) => { e.target.style.display = "none"; }} />
@@ -120,6 +128,39 @@ export default function CuentaCobroDoc() {
         </div>
       </div>
 
+      {hayAnexo && (
+        <div className={"hoja anexo-hoja " + (impr === "cuenta" ? "oculto-print " : "") + (impr === "unido" ? "con-salto" : "")}>
+          <div className="anexo-tit">Ventas</div>
+          <div className="fondo-nom">{FONDO.nombre}</div>
+          <div className="fondo-info">NIT: {FONDO.nit}</div>
+          <div style={{ fontSize: 12, margin: "10px 0", color: "#475569" }}>
+            Relación de facturas — Cuenta de cobro No. {cuenta.consecutivo}
+            {cuenta.documento_nombre ? ` · ${cuenta.documento_nombre}` : ""}
+          </div>
+          <table className="anexo-tbl">
+            <thead>
+              <tr><th>Tipo de transacción</th><th>Comprobante</th><th>Fecha elaboración</th><th>Identificación</th><th>Cliente</th><th>Total</th></tr>
+            </thead>
+            <tbody>
+              {facturas.map((f) => (
+                <tr key={f.id}>
+                  <td>Factura de venta / Ingresos</td>
+                  <td>FV-2-{f.consecutivo}</td>
+                  <td>{fmtFecha(cuenta.fecha_elaboracion)}</td>
+                  <td>{f.cedula}</td>
+                  <td>{f.nombre}</td>
+                  <td className="r">{fmtPesos(f.valor_comision)}</td>
+                </tr>
+              ))}
+              <tr className="anexo-total">
+                <td colSpan={5}>Total ({facturas.length} factura{facturas.length !== 1 ? "s" : ""})</td>
+                <td className="r">{fmtPesos(totalAnexo)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
+
       <style>{`
         .doc-wrap{max-width:800px;margin:0 auto;padding:16px;font-family:'Segoe UI',system-ui,sans-serif;color:#1a1a2e}
         .barra{display:flex;justify-content:space-between;margin-bottom:16px}
@@ -149,10 +190,20 @@ export default function CuentaCobroDoc() {
         .firmas{display:flex;justify-content:space-between;gap:40px;margin-top:60px;font-size:11px;font-weight:600;text-align:center}
         .firmas>div{flex:1}
         .linea{border-top:1px solid #0a1628;margin-bottom:6px}
+        .anexo-hoja{margin-top:24px}
+        .anexo-tit{font-size:20px;font-weight:800;color:#0a1628;letter-spacing:1px}
+        .anexo-tbl{width:100%;border-collapse:collapse;font-size:11px;margin-top:10px}
+        .anexo-tbl th{background:#1e293b;color:#fff;padding:7px;text-align:left}
+        .anexo-tbl td{padding:7px;border-bottom:1px solid #e2e8f0}
+        .anexo-tbl td.r{text-align:right}
+        .anexo-tbl tr.anexo-total td{font-weight:800;border-top:2px solid #0a1628;background:#f1f5f9}
         @media print {
           .no-print{display:none}
+          .oculto-print{display:none}
           .doc-wrap{padding:0;max-width:100%}
           .hoja{border:none;border-radius:0;padding:0}
+          .anexo-hoja{margin-top:0}
+          .con-salto{page-break-before:always}
           body{background:#fff}
         }
       `}</style>
