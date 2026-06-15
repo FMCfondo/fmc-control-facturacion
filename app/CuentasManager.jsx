@@ -18,6 +18,12 @@ export default function CuentasManager({ cuentas, mutuales }) {
   const [msg, setMsg] = useState("");
   const [guardando, setGuardando] = useState(false);
 
+  // Pagos
+  const [pagosCuenta, setPagosCuenta] = useState(null); // cuenta seleccionada
+  const [pagos, setPagos] = useState([]);
+  const [pagoForm, setPagoForm] = useState({ fecha: "", valor: "", metodo: "", notas: "" });
+  const [pagoMsg, setPagoMsg] = useState("");
+
   const mapNombre = Object.fromEntries(mutuales.map((m) => [m.id, m.nombre]));
   const nombreCliente = (c) =>
     c.tipo === "irregular" ? (c.cliente_nombre || "—") : (mapNombre[c.mutual_id] || c.cliente_nombre || "—");
@@ -79,6 +85,38 @@ export default function CuentasManager({ cuentas, mutuales }) {
     }
   }
 
+  // ─── Pagos ───
+  async function abrirPagos(c) {
+    setPagosCuenta(c); setPagoMsg(""); setPagos([]);
+    setPagoForm({ fecha: new Date().toISOString().slice(0, 10), valor: "", metodo: "", notas: "" });
+    const r = await fetch(`/api/pagos?cuenta_cobro_id=${c.id}`);
+    const d = await r.json();
+    if (!r.ok) { setPagoMsg("✗ " + d.error); return; }
+    setPagos(d.pagos || []);
+  }
+  async function agregarPago(e) {
+    e.preventDefault(); setPagoMsg("");
+    try {
+      const res = await fetch("/api/pagos", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cuenta_cobro_id: pagosCuenta.id, ...pagoForm }),
+      });
+      const out = await res.json();
+      if (!res.ok) throw new Error(out.error);
+      const r = await fetch(`/api/pagos?cuenta_cobro_id=${pagosCuenta.id}`);
+      setPagos((await r.json()).pagos || []);
+      setPagoForm({ fecha: pagoForm.fecha, valor: "", metodo: "", notas: "" });
+      router.refresh();
+    } catch (e) { setPagoMsg("✗ " + e.message); }
+  }
+  async function borrarPago(id) {
+    if (!confirm("¿Borrar este pago?")) return;
+    await fetch("/api/pagos", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) });
+    const r = await fetch(`/api/pagos?cuenta_cobro_id=${pagosCuenta.id}`);
+    setPagos((await r.json()).pagos || []);
+    router.refresh();
+  }
+
   async function borrar() {
     if (!editId) return;
     if (!confirm("¿Borrar esta cuenta de cobro y sus facturas? Esta acción no se puede deshacer.")) return;
@@ -134,7 +172,10 @@ export default function CuentasManager({ cuentas, mutuales }) {
                     <option value="pago">pago</option>
                   </select>
                 </td>
-                <td><button className="mini" onClick={() => editar(c)}>Editar</button></td>
+                <td style={{ whiteSpace: "nowrap" }}>
+                  <button className="mini" onClick={() => abrirPagos(c)}>Pagos</button>{" "}
+                  <button className="mini" onClick={() => editar(c)}>Editar</button>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -192,7 +233,54 @@ export default function CuentasManager({ cuentas, mutuales }) {
         </div>
       )}
 
+      {pagosCuenta && (
+        <div className="modal-bg" onClick={(e) => e.target.className === "modal-bg" && setPagosCuenta(null)}>
+          <div className="modal">
+            <h3>Pagos — CC #{pagosCuenta.consecutivo} · {nombreCliente(pagosCuenta)}</h3>
+            <div className="resumen-pago">
+              <span><b>Facturado:</b> {fmtPesos(pagosCuenta.valor_facturado)}</span>
+              <span><b>Recibido:</b> {fmtPesos(pagos.reduce((s, p) => s + Number(p.valor), 0))}</span>
+              <span><b>Saldo:</b> {fmtPesos(Number(pagosCuenta.valor_facturado) - pagos.reduce((s, p) => s + Number(p.valor), 0))}</span>
+            </div>
+
+            {pagos.length > 0 ? (
+              <table style={{ marginTop: 12 }}>
+                <thead><tr><th>Fecha</th><th>Valor</th><th>Método</th><th>Notas</th><th></th></tr></thead>
+                <tbody>
+                  {pagos.map((p) => (
+                    <tr key={p.id}>
+                      <td>{fmtFecha(p.fecha)}</td>
+                      <td className="num">{fmtPesos(p.valor)}</td>
+                      <td>{p.metodo || "—"}</td>
+                      <td>{p.notas || "—"}</td>
+                      <td><button className="del" style={{ padding: "2px 8px" }} onClick={() => borrarPago(p.id)}>✕</button></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : <p className="hint" style={{ margin: "12px 0" }}>Aún no hay pagos registrados.</p>}
+
+            <form onSubmit={agregarPago} className="form-pago">
+              <input type="date" value={pagoForm.fecha} onChange={(e) => setPagoForm({ ...pagoForm, fecha: e.target.value })} required />
+              <input type="number" step="0.01" placeholder="Valor" value={pagoForm.valor} onChange={(e) => setPagoForm({ ...pagoForm, valor: e.target.value })} required />
+              <input placeholder="Método (opcional)" value={pagoForm.metodo} onChange={(e) => setPagoForm({ ...pagoForm, metodo: e.target.value })} />
+              <input placeholder="Notas (opcional)" value={pagoForm.notas} onChange={(e) => setPagoForm({ ...pagoForm, notas: e.target.value })} />
+              <button type="submit" className="btn-primary">+ Pago</button>
+            </form>
+            {pagoMsg && <div className="err" style={{ marginTop: 10 }}>{pagoMsg}</div>}
+
+            <div className="modal-acc">
+              <span style={{ flex: 1 }} />
+              <button type="button" className="logout" onClick={() => setPagosCuenta(null)}>Cerrar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <style>{`
+        .resumen-pago{display:flex;gap:20px;flex-wrap:wrap;padding:10px;background:#f8fafc;border-radius:8px;font-size:13px}
+        .form-pago{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;align-items:center}
+        .form-pago input{padding:8px 10px;border:1px solid #cbd5e1;border-radius:7px;font-size:13px}
         .mini{background:#eff6ff;color:#1e40af;border:1px solid #93c5fd;border-radius:6px;padding:3px 10px;font-size:11px;font-weight:600;cursor:pointer}
         .estado-sel{border:1px solid #cbd5e1;border-radius:999px;padding:3px 8px;font-size:11px;font-weight:600;cursor:pointer}
         .estado-sel.pago{background:#dcfce7;color:#166534;border-color:#86efac}
