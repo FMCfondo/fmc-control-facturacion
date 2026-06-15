@@ -4,7 +4,7 @@ import { fmtPesos, fmtFecha } from "../lib/format";
 
 const VACIA = {
   tipo: "regular", mutual_id: "", cliente_nombre: "", consecutivo: "",
-  mes: "", anio: new Date().getFullYear(), fecha_elaboracion: "",
+  mes: "", anio: new Date().getFullYear(), fecha_elaboracion: "", fecha_vencimiento: "",
   factura_inicial: "", factura_final: "", valor_facturado: "", valor_recibido: "",
   anticipos: "", estado: "pendiente", notas: "",
 };
@@ -51,7 +51,8 @@ export default function CuentasManager({ cuentas, mutuales }) {
     setForm({
       tipo: c.tipo || "regular", mutual_id: c.mutual_id || "", cliente_nombre: c.cliente_nombre || "",
       consecutivo: c.consecutivo ?? "", mes: c.mes ?? "", anio: c.anio ?? "",
-      fecha_elaboracion: c.fecha_elaboracion || "", factura_inicial: c.factura_inicial ?? "",
+      fecha_elaboracion: c.fecha_elaboracion || "", fecha_vencimiento: c.fecha_vencimiento || "",
+      factura_inicial: c.factura_inicial ?? "",
       factura_final: c.factura_final ?? "", valor_facturado: c.valor_facturado ?? "",
       valor_recibido: c.valor_recibido ?? "", anticipos: c.anticipos ?? "",
       estado: c.estado || "pendiente", notas: c.notas || "",
@@ -339,7 +340,8 @@ export default function CuentasManager({ cuentas, mutuales }) {
                 </label>
               )}
               <label>Cuenta de cobro #<input type="number" value={form.consecutivo} onChange={(e) => set("consecutivo", e.target.value)} required /></label>
-              <label>Fecha<input type="date" value={form.fecha_elaboracion || ""} onChange={(e) => set("fecha_elaboracion", e.target.value)} /></label>
+              <label>Fecha elaboración<input type="date" value={form.fecha_elaboracion || ""} onChange={(e) => set("fecha_elaboracion", e.target.value)} /></label>
+              <label>Fecha vencimiento<input type="date" value={form.fecha_vencimiento || ""} onChange={(e) => set("fecha_vencimiento", e.target.value)} /></label>
               <label>Mes<input type="number" min="1" max="12" value={form.mes} onChange={(e) => set("mes", e.target.value)} /></label>
               <label>Año<input type="number" value={form.anio} onChange={(e) => set("anio", e.target.value)} required /></label>
               <label>Factura inicial<input type="number" value={form.factura_inicial} onChange={(e) => set("factura_inicial", e.target.value)} /></label>
