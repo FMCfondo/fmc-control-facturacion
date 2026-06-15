@@ -55,8 +55,33 @@ export default function CuentasManager({ cuentas, mutuales }) {
 
   function set(k, v) { setForm((f) => ({ ...f, [k]: v })); }
 
-  // Actualiza el estado directamente desde la lista desplegable de la fila.
+  // Lógica inteligente al cambiar el estado desde la lista desplegable.
   async function cambiarEstado(id, estado) {
+    const c = lista.find((x) => x.id === id);
+    if (!c) return;
+    const saldo = Number(c.valor_facturado || 0) - Number(c.valor_recibido || 0);
+
+    // "parcial" → abrir el cuadro de pagos para ingresar el monto.
+    if (estado === "parcial") { abrirPagos(c); return; }
+
+    // "pago" → registrar un pago por el saldo restante (recibido = facturado).
+    if (estado === "pago" && saldo > 0) {
+      try {
+        const res = await fetch("/api/pagos", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            cuenta_cobro_id: id, fecha: new Date().toISOString().slice(0, 10),
+            valor: saldo, notas: "Pago total (registrado desde estado)",
+          }),
+        });
+        const out = await res.json();
+        if (!res.ok) throw new Error(out.error);
+        recargar();
+      } catch (e) { alert("No se pudo registrar el pago: " + e.message); }
+      return;
+    }
+
+    // "pendiente" (o "pago" sin saldo): actualizar el estado directamente.
     try {
       const res = await fetch("/api/cuenta-cobro", {
         method: "PATCH", headers: { "Content-Type": "application/json" },
@@ -80,6 +105,10 @@ export default function CuentasManager({ cuentas, mutuales }) {
         .forEach((k) => { body[k] = body[k] === "" ? null : Number(body[k]); });
       if (body.tipo === "irregular") body.mutual_id = null;
       else body.cliente_nombre = null;
+      // Derivar estado automáticamente según el valor recibido vs facturado.
+      const vf = Number(body.valor_facturado) || 0;
+      const vr = Number(body.valor_recibido) || 0;
+      if (vf > 0) body.estado = vr <= 0 ? "pendiente" : (vr >= vf ? "pago" : "parcial");
       const res = await fetch("/api/cuenta-cobro", {
         method: editId ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
