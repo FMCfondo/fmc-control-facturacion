@@ -23,7 +23,15 @@ export default function CuentaCobroDoc() {
   if (err) return <div style={{ padding: 40 }}>Error: {err}</div>;
   if (!data) return <div style={{ padding: 40 }}>Cargando…</div>;
 
-  const { cuenta, mutual, items, facturas } = data;
+  const { cuenta, mutual, items, facturas, fondo: cfg } = data;
+  // Datos del Fondo: editables desde Clientes (config), con respaldo a la constante.
+  const FOND = {
+    nombre: cfg?.fondo_nombre || FONDO.nombre,
+    nit: cfg?.fondo_nit || FONDO.nit,
+    direccion: cfg?.fondo_direccion || FONDO.direccion,
+    correo: cfg?.fondo_correo || FONDO.correo,
+    telefono: cfg?.fondo_telefono || FONDO.telefono,
+  };
   const hayAnexo = facturas && facturas.length > 0;
   const totalAnexo = (facturas || []).reduce((s, f) => s + Number(f.valor_comision || 0), 0);
 
@@ -66,9 +74,9 @@ export default function CuentaCobroDoc() {
             <img src="/FMC-LOGO.jpeg" alt="" className="logo" onError={(e) => { e.target.style.display = "none"; }} />
             <div>
               <div className="titulo">CUENTA DE COBRO</div>
-              <div className="fondo-nom">{FONDO.nombre}</div>
+              <div className="fondo-nom">{FOND.nombre}</div>
               <div className="fondo-info">
-                {FONDO.correo}<br />{FONDO.direccion}<br />NIT: {FONDO.nit}<br />{FONDO.telefono}
+                {FOND.correo}<br />{FOND.direccion}<br />NIT: {FOND.nit}<br />{FOND.telefono}
               </div>
             </div>
           </div>
@@ -85,7 +93,7 @@ export default function CuentaCobroDoc() {
           <div><b>DIRECCIÓN:</b> {cli.dir || "—"}</div>
           <div><b>FECHA VENCIMIENTO:</b> {fmtFecha(cuenta.fecha_vencimiento)}</div>
           <div><b>NIT:</b> {cli.nit || "—"}</div>
-          <div><b>VENDEDOR:</b> {FONDO.nombre}</div>
+          <div><b>VENDEDOR:</b> {FOND.nombre}</div>
           <div><b>TELÉFONO:</b> {cli.tel || "—"}</div>
           <div><b>EMAIL:</b> {cli.email || "—"}</div>
         </div>
@@ -131,8 +139,8 @@ export default function CuentaCobroDoc() {
       {hayAnexo && (
         <div className={"hoja anexo-hoja " + (impr === "cuenta" ? "oculto-print " : "") + (impr === "unido" ? "con-salto" : "")}>
           <div className="anexo-tit">Ventas</div>
-          <div className="fondo-nom">{FONDO.nombre}</div>
-          <div className="fondo-info">NIT: {FONDO.nit}</div>
+          <div className="fondo-nom">{FOND.nombre}</div>
+          <div className="fondo-info">NIT: {FOND.nit}</div>
           <div style={{ fontSize: 12, margin: "10px 0", color: "#475569" }}>
             Relación de facturas — Cuenta de cobro No. {cuenta.consecutivo}
             {cuenta.documento_nombre ? ` · ${cuenta.documento_nombre}` : ""}

@@ -35,6 +35,7 @@ export default async function Dashboard() {
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <a className="btn-primary" href="/generar">+ Generar facturación</a>
+            <a className="logout" href="/clientes">Clientes</a>
             <LogoutButton />
           </div>
         </div>

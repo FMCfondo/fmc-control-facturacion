@@ -20,8 +20,10 @@ export async function GET(request) {
     }
     const { data: items } = await sb.from("items_cuenta_cobro").select("*").eq("cuenta_cobro_id", id);
     const { data: facturas } = await sb.from("facturas_siigo").select("*").eq("cuenta_cobro_id", id).order("consecutivo");
+    const { data: cfg } = await sb.from("config").select("*");
+    const fondo = Object.fromEntries((cfg || []).map((r) => [r.clave, r.valor]));
 
-    return NextResponse.json({ cuenta, mutual, items: items || [], facturas: facturas || [] });
+    return NextResponse.json({ cuenta, mutual, items: items || [], facturas: facturas || [], fondo });
   } catch (e) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
