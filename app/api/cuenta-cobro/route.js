@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../lib/supabase";
 
+export const dynamic = "force-dynamic";
+
 // Campos que se permiten crear/editar manualmente.
 const CAMPOS = [
   "consecutivo", "tipo", "mutual_id", "cliente_nombre", "cliente_nit",

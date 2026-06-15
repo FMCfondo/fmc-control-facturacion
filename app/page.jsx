@@ -1,3 +1,4 @@
+import { unstable_noStore as noStore } from "next/cache";
 import { supabaseAdmin } from "../lib/supabase";
 import LogoutButton from "./LogoutButton";
 import CuentasManager from "./CuentasManager";
@@ -7,6 +8,7 @@ import CuentasManager from "./CuentasManager";
 export const dynamic = "force-dynamic";
 
 async function getData() {
+  noStore();
   const sb = supabaseAdmin();
   const [ccRes, mutRes] = await Promise.all([
     sb.from("cuentas_cobro").select("*")

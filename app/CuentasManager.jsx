@@ -11,7 +11,8 @@ const VACIA = {
 
 export default function CuentasManager({ cuentas, mutuales }) {
   const [lista, setLista] = useState(cuentas);
-  useEffect(() => { setLista(cuentas); }, [cuentas]);
+  // Al montar, recarga datos frescos de la BD (evita ver una versión cacheada de la página).
+  useEffect(() => { recargar(); /* eslint-disable-next-line */ }, []);
 
   // Recarga la lista desde la BD (sustituye a router.refresh, más confiable).
   async function recargar() {
