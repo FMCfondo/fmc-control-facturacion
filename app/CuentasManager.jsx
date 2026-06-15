@@ -55,41 +55,44 @@ export default function CuentasManager({ cuentas, mutuales }) {
 
   function set(k, v) { setForm((f) => ({ ...f, [k]: v })); }
 
-  // Lógica inteligente al cambiar el estado desde la lista desplegable.
+  const borrarTodosPagos = (id) =>
+    fetch("/api/pagos", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cuenta_cobro_id: id }) });
+
+  // Cambiar estado desde la lista desplegable, ajustando el recibido en consecuencia.
   async function cambiarEstado(id, estado) {
     const c = lista.find((x) => x.id === id);
     if (!c) return;
-    const saldo = Number(c.valor_facturado || 0) - Number(c.valor_recibido || 0);
+    const facturado = Number(c.valor_facturado || 0);
 
-    // "parcial" → abrir el cuadro de pagos para ingresar el monto.
-    if (estado === "parcial") { abrirPagos(c); return; }
-
-    // "pago" → registrar un pago por el saldo restante (recibido = facturado).
-    if (estado === "pago" && saldo > 0) {
-      try {
-        const res = await fetch("/api/pagos", {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            cuenta_cobro_id: id, fecha: new Date().toISOString().slice(0, 10),
-            valor: saldo, notas: "Pago total (registrado desde estado)",
-          }),
-        });
-        const out = await res.json();
-        if (!res.ok) throw new Error(out.error);
-        recargar();
-      } catch (e) { alert("No se pudo registrar el pago: " + e.message); }
-      return;
-    }
-
-    // "pendiente" (o "pago" sin saldo): actualizar el estado directamente.
     try {
-      const res = await fetch("/api/cuenta-cobro", {
-        method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, estado }),
-      });
-      const out = await res.json();
-      if (!res.ok) throw new Error(out.error);
-      recargar();
+      if (estado === "pendiente") {
+        // Quitar todo lo recibido → saldo completo pendiente.
+        await borrarTodosPagos(id);
+        recargar();
+        return;
+      }
+      if (estado === "pago") {
+        // Reemplazar pagos por uno que cubra el total (recibido = facturado).
+        await borrarTodosPagos(id);
+        if (facturado > 0) {
+          await fetch("/api/pagos", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              cuenta_cobro_id: id, fecha: new Date().toISOString().slice(0, 10),
+              valor: facturado, notas: "Pago total (desde estado)",
+            }),
+          });
+        }
+        recargar();
+        return;
+      }
+      if (estado === "parcial") {
+        // Reiniciar recibido y abrir el cuadro para ingresar el monto parcial.
+        await borrarTodosPagos(id);
+        await recargar();
+        abrirPagos({ ...c, valor_recibido: 0, estado: "pendiente" });
+        return;
+      }
     } catch (e) {
       alert("No se pudo cambiar el estado: " + e.message);
     }

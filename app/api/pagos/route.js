@@ -35,13 +35,19 @@ export async function POST(request) {
   }
 }
 
-// DELETE → elimina un pago (el trigger recalcula)
+// DELETE → elimina un pago (por id) o TODOS los de una cuenta (por cuenta_cobro_id).
+// El trigger recalcula el recibido/estado.
 export async function DELETE(request) {
   try {
-    const { id } = await request.json();
-    if (!id) return NextResponse.json({ error: "Falta el id" }, { status: 400 });
+    const b = await request.json();
     const sb = supabaseAdmin();
-    const { error } = await sb.from("pagos").delete().eq("id", id);
+    if (b.cuenta_cobro_id) {
+      const { error } = await sb.from("pagos").delete().eq("cuenta_cobro_id", b.cuenta_cobro_id);
+      if (error) throw error;
+      return NextResponse.json({ ok: true });
+    }
+    if (!b.id) return NextResponse.json({ error: "Falta el id o cuenta_cobro_id" }, { status: 400 });
+    const { error } = await sb.from("pagos").delete().eq("id", b.id);
     if (error) throw error;
     return NextResponse.json({ ok: true });
   } catch (e) {

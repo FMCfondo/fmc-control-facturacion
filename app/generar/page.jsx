@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { leerExcel, procesarFilas, procesarTexto } from "../../lib/siigo/procesar";
+import { leerExcel, leerHoja, procesarFilas, procesarTexto } from "../../lib/siigo/procesar";
 import { generarArchivosSiigo, descargar } from "../../lib/siigo/generar";
 import { desglosarComision, round2, round6 } from "../../lib/siigo/utils";
 import { fmtPesos } from "../../lib/format";
@@ -21,6 +21,9 @@ export default function Generar() {
   const [modo, setModo] = useState("file"); // file | paste
   const [texto, setTexto] = useState("");
   const [fileInfo, setFileInfo] = useState("");
+  const [archivoBuf, setArchivoBuf] = useState(null);
+  const [hojas, setHojas] = useState([]);
+  const [hojaSel, setHojaSel] = useState("");
 
   const [records, setRecords] = useState(null);
   const [errs, setErrs] = useState([]);
@@ -48,8 +51,18 @@ export default function Generar() {
     const file = e.target.files?.[0];
     if (!file) return;
     const buf = await file.arrayBuffer();
-    const { hojaElegida, rows } = leerExcel(buf);
-    setFileInfo(`✓ ${file.name} — hoja "${hojaElegida}" — ${rows.length} filas`);
+    const { hojas, hojaElegida, rows } = leerExcel(buf);
+    setArchivoBuf(buf); setHojas(hojas); setHojaSel(hojaElegida);
+    setFileInfo(`✓ ${file.name} — ${rows.length} filas`);
+    const { records, errs } = procesarFilas(rows);
+    setRecords(records); setErrs(errs); setFiles([]); setRegistrado(false); setMsg("");
+  }
+
+  function cambiarHoja(nombre) {
+    if (!archivoBuf) return;
+    setHojaSel(nombre);
+    const rows = leerHoja(archivoBuf, nombre);
+    setFileInfo(`✓ ${rows.length} filas`);
     const { records, errs } = procesarFilas(rows);
     setRecords(records); setErrs(errs); setFiles([]); setRegistrado(false); setMsg("");
   }
@@ -172,7 +185,16 @@ export default function Generar() {
         {modo === "file" ? (
           <div>
             <input type="file" accept=".xlsx,.xlsm,.xls" onChange={onFile} />
-            {fileInfo && <p className="hint" style={{ color: "#10b981" }}>{fileInfo}</p>}
+            {hojas.length > 0 && (
+              <div style={{ marginTop: 10 }}>
+                <label className="fld" style={{ maxWidth: 320 }}>Hoja a procesar
+                  <select value={hojaSel} onChange={(e) => cambiarHoja(e.target.value)}>
+                    {hojas.map((h) => <option key={h} value={h}>{h}</option>)}
+                  </select>
+                </label>
+              </div>
+            )}
+            {fileInfo && <p className="hint" style={{ color: "#10b981" }}>{fileInfo} {hojaSel && `· hoja: "${hojaSel}"`}</p>}
           </div>
         ) : (
           <div>
