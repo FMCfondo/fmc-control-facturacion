@@ -1,6 +1,5 @@
 "use client";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
 import { fmtPesos, fmtFecha } from "../lib/format";
 
 const VACIA = {
@@ -11,7 +10,18 @@ const VACIA = {
 };
 
 export default function CuentasManager({ cuentas, mutuales }) {
-  const router = useRouter();
+  const [lista, setLista] = useState(cuentas);
+  useEffect(() => { setLista(cuentas); }, [cuentas]);
+
+  // Recarga la lista desde la BD (sustituye a router.refresh, más confiable).
+  async function recargar() {
+    try {
+      const r = await fetch("/api/cuenta-cobro", { cache: "no-store" });
+      const d = await r.json();
+      if (r.ok) setLista(d.cuentas || []);
+    } catch {}
+  }
+
   const [abierto, setAbierto] = useState(false);
   const [form, setForm] = useState(VACIA);
   const [editId, setEditId] = useState(null);
@@ -53,7 +63,7 @@ export default function CuentasManager({ cuentas, mutuales }) {
       });
       const out = await res.json();
       if (!res.ok) throw new Error(out.error);
-      router.refresh();
+      recargar();
     } catch (e) {
       alert("No se pudo cambiar el estado: " + e.message);
     }
@@ -77,7 +87,7 @@ export default function CuentasManager({ cuentas, mutuales }) {
       const out = await res.json();
       if (!res.ok) throw new Error(out.error);
       setAbierto(false);
-      router.refresh();
+      recargar();
     } catch (e) {
       setMsg("✗ " + e.message);
     } finally {
@@ -106,7 +116,7 @@ export default function CuentasManager({ cuentas, mutuales }) {
       const r = await fetch(`/api/pagos?cuenta_cobro_id=${pagosCuenta.id}`);
       setPagos((await r.json()).pagos || []);
       setPagoForm({ fecha: pagoForm.fecha, valor: "", metodo: "", notas: "" });
-      router.refresh();
+      recargar();
     } catch (e) { setPagoMsg("✗ " + e.message); }
   }
   async function borrarPago(id) {
@@ -114,7 +124,7 @@ export default function CuentasManager({ cuentas, mutuales }) {
     await fetch("/api/pagos", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) });
     const r = await fetch(`/api/pagos?cuenta_cobro_id=${pagosCuenta.id}`);
     setPagos((await r.json()).pagos || []);
-    router.refresh();
+    recargar();
   }
 
   async function borrar() {
@@ -129,7 +139,7 @@ export default function CuentasManager({ cuentas, mutuales }) {
       const out = await res.json();
       if (!res.ok) throw new Error(out.error);
       setAbierto(false);
-      router.refresh();
+      recargar();
     } catch (e) {
       setMsg("✗ " + e.message);
     } finally {
@@ -137,10 +147,22 @@ export default function CuentasManager({ cuentas, mutuales }) {
     }
   }
 
+  const totFact = lista.reduce((s, c) => s + (Number(c.valor_facturado) || 0), 0);
+  const totRec = lista.reduce((s, c) => s + (Number(c.valor_recibido) || 0), 0);
+  const pendientes = lista.filter((c) => c.estado !== "pago").length;
+
   return (
+    <>
+    <div className="cards">
+      <div className="kpi"><div className="label">Cuentas de cobro</div><div className="value">{lista.length}</div></div>
+      <div className="kpi"><div className="label">Total facturado</div><div className="value">{fmtPesos(totFact)}</div></div>
+      <div className="kpi"><div className="label">Total recibido</div><div className="value">{fmtPesos(totRec)}</div></div>
+      <div className="kpi"><div className="label">Saldo pendiente</div><div className="value">{fmtPesos(totFact - totRec)}</div><div className="sub">{pendientes} sin saldar</div></div>
+      <div className="kpi"><div className="label">Mutuales</div><div className="value">{mutuales.length}</div></div>
+    </div>
     <div className="card">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-        <h2 style={{ margin: 0 }}>Cuentas de cobro ({cuentas.length})</h2>
+        <h2 style={{ margin: 0 }}>Cuentas de cobro ({lista.length})</h2>
         <button className="btn-primary" onClick={nueva}>+ Nueva manual</button>
       </div>
       <div className="tbl-wrap">
@@ -152,7 +174,7 @@ export default function CuentasManager({ cuentas, mutuales }) {
             </tr>
           </thead>
           <tbody>
-            {cuentas.map((c) => (
+            {lista.map((c) => (
               <tr key={c.id}>
                 <td>{c.consecutivo}</td>
                 <td><span className={"tag " + (c.tipo === "irregular" ? "irregular" : "")}>{c.tipo}</span></td>
@@ -296,5 +318,6 @@ export default function CuentasManager({ cuentas, mutuales }) {
         .del{background:#fef2f2;color:#dc2626;border:1px solid #fecaca;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer}
       `}</style>
     </div>
+    </>
   );
 }

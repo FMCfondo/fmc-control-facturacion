@@ -16,6 +16,21 @@ function limpiar(body) {
   return o;
 }
 
+// Lista todas las cuentas de cobro (para refrescar la tabla tras un cambio).
+export async function GET() {
+  try {
+    const sb = supabaseAdmin();
+    const { data, error } = await sb.from("cuentas_cobro").select("*")
+      .order("anio", { ascending: false })
+      .order("mes", { ascending: false, nullsFirst: false })
+      .order("consecutivo", { ascending: false });
+    if (error) throw error;
+    return NextResponse.json({ cuentas: data });
+  } catch (e) {
+    return NextResponse.json({ error: e.message }, { status: 500 });
+  }
+}
+
 // Crear una cuenta de cobro manual.
 export async function POST(request) {
   try {

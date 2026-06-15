@@ -1,5 +1,4 @@
 import { supabaseAdmin } from "../lib/supabase";
-import { fmtPesos } from "../lib/format";
 import LogoutButton from "./LogoutButton";
 import CuentasManager from "./CuentasManager";
 
@@ -55,32 +54,5 @@ export default async function Dashboard() {
 }
 
 function Contenido({ cuentas, mutuales }) {
-  const total = cuentas.reduce((s, c) => s + (Number(c.valor_facturado) || 0), 0);
-  const recibido = cuentas.reduce((s, c) => s + (Number(c.valor_recibido) || 0), 0);
-  const saldo = total - recibido;
-  const pendientes = cuentas.filter((c) => c.estado !== "pago").length;
-
-  return (
-    <>
-      <div className="cards">
-        <Kpi label="Cuentas de cobro" value={cuentas.length} />
-        <Kpi label="Total facturado" value={fmtPesos(total)} />
-        <Kpi label="Total recibido" value={fmtPesos(recibido)} />
-        <Kpi label="Saldo pendiente" value={fmtPesos(saldo)} sub={`${pendientes} sin saldar`} />
-        <Kpi label="Mutuales" value={mutuales.length} />
-      </div>
-
-      <CuentasManager cuentas={cuentas} mutuales={mutuales} />
-    </>
-  );
-}
-
-function Kpi({ label, value, sub }) {
-  return (
-    <div className="kpi">
-      <div className="label">{label}</div>
-      <div className="value">{value}</div>
-      {sub && <div className="sub">{sub}</div>}
-    </div>
-  );
+  return <CuentasManager cuentas={cuentas} mutuales={mutuales} />;
 }
