@@ -32,18 +32,21 @@ export default function Generar() {
   const [registrado, setRegistrado] = useState(false);
   const [msg, setMsg] = useState("");
 
-  useEffect(() => {
-    fetch("/api/consecutivos")
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.error) throw new Error(d.error);
-        setMutuales(d.mutuales || []);
-        setCc(String(d.proximoCC));
-        setFactIni(String(d.proximaFactura));
-      })
-      .catch((e) => setCfgErr(e.message))
-      .finally(() => setCargandoCfg(false));
-  }, []);
+  async function cargarConsecutivos() {
+    try {
+      const r = await fetch("/api/consecutivos", { cache: "no-store" });
+      const d = await r.json();
+      if (d.error) throw new Error(d.error);
+      setMutuales(d.mutuales || []);
+      setCc(String(d.proximoCC));
+      setFactIni(String(d.proximaFactura));
+    } catch (e) {
+      setCfgErr(e.message);
+    } finally {
+      setCargandoCfg(false);
+    }
+  }
+  useEffect(() => { cargarConsecutivos(); }, []);
 
   const mutual = mutuales.find((m) => m.id === mutualId);
 
@@ -125,7 +128,9 @@ export default function Generar() {
       const out = await res.json();
       if (!res.ok) throw new Error(out.error || "Error al registrar");
       setRegistrado(true);
-      setMsg(`✓ Lote registrado: cuenta de cobro #${cc}, facturas ${factIni}–${factFin}.`);
+      setMsg(`✓ Lote registrado: cuenta de cobro #${cc}, facturas ${factIni}–${factFin}. Los archivos se descargaron. Para otra mutual, los consecutivos ya avanzaron.`);
+      // Avanzar los consecutivos para el siguiente lote.
+      await cargarConsecutivos();
     } catch (e) {
       setMsg("✗ " + e.message);
     } finally {
