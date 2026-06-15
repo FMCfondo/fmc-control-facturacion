@@ -55,7 +55,7 @@ export default function CuentaCobroDoc() {
       <div className="hoja">
         <div className="enc">
           <div className="enc-izq">
-            <img src="/logo.png" alt="" className="logo" onError={(e) => { e.target.style.display = "none"; }} />
+            <img src="/FMC-LOGO.png" alt="" className="logo" onError={(e) => { e.target.style.display = "none"; }} />
             <div>
               <div className="titulo">CUENTA DE COBRO</div>
               <div className="fondo-nom">{FONDO.nombre}</div>
