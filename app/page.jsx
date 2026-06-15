@@ -1,6 +1,5 @@
 import { unstable_noStore as noStore } from "next/cache";
 import { supabaseAdmin } from "../lib/supabase";
-import LogoutButton from "./LogoutButton";
 import CuentasManager from "./CuentasManager";
 
 // Server component: lee directo de Supabase en el servidor (service role, nunca llega al navegador).
@@ -27,19 +26,9 @@ export default async function Dashboard() {
 
   return (
     <div className="wrap">
-      <div className="header">
-        <div className="header-row">
-          <div>
-            <h1>Control de Facturación</h1>
-            <p>Fondo Mutuo de Cobertura S.A.S — Tablero de cuentas de cobro</p>
-          </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <a className="btn-primary" href="/generar">+ Generar facturación</a>
-            <a className="logout" href="/facturas-venta">Facturas de venta</a>
-            <a className="logout" href="/clientes">Clientes</a>
-            <LogoutButton />
-          </div>
-        </div>
+      <div className="page-head">
+        <h1>Tablero</h1>
+        <p>Cuentas de cobro · seguimiento de cartera</p>
       </div>
 
       {error && (

@@ -1,27 +1,39 @@
 "use client";
 import { useEffect, useState } from "react";
-import LogoutButton from "../LogoutButton";
 
 const VACIA = { nombre: "", nombre_corto: "", nit: "", dv: "", representante: "", direccion: "", ciudad: "", telefono: "", correo: "", es_socia: false, activa: true };
 
 export default function Clientes() {
   const [mutuales, setMutuales] = useState([]);
   const [fondo, setFondo] = useState({});
+  const [params, setParams] = useState({});
   const [msg, setMsg] = useState("");
+  const [msgP, setMsgP] = useState("");
 
   const [abierto, setAbierto] = useState(false);
   const [form, setForm] = useState(VACIA);
   const [editId, setEditId] = useState(null);
 
   async function cargar() {
-    const [m, c] = await Promise.all([
+    const [m, c, p] = await Promise.all([
       fetch("/api/mutuales", { cache: "no-store" }).then((r) => r.json()),
       fetch("/api/config", { cache: "no-store" }).then((r) => r.json()),
+      fetch("/api/parametros", { cache: "no-store" }).then((r) => r.json()),
     ]);
     setMutuales(m.mutuales || []);
     setFondo(c.config || {});
+    setParams(p.parametros || {});
   }
   useEffect(() => { cargar(); }, []);
+
+  async function guardarMora(e) {
+    e.preventDefault(); setMsgP("");
+    const res = await fetch("/api/parametros", {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tasa_mora: params.tasa_mora || 0 }),
+    });
+    setMsgP(res.ok ? "✓ Guardado" : "✗ Error");
+  }
 
   // ── Fondo ──
   const setFondoK = (k, v) => setFondo((f) => ({ ...f, [k]: v }));
@@ -57,14 +69,9 @@ export default function Clientes() {
 
   return (
     <div className="wrap">
-      <div className="header">
-        <div className="header-row">
-          <div><h1>Clientes y configuración</h1><p>Mutuales vinculadas y datos del Fondo</p></div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <a className="logout" href="/">← Tablero</a>
-            <LogoutButton />
-          </div>
-        </div>
+      <div className="page-head">
+        <h1>Clientes y configuración</h1>
+        <p>Mutuales vinculadas, datos del Fondo y parámetros</p>
       </div>
 
       {/* Datos del Fondo */}
@@ -80,6 +87,23 @@ export default function Clientes() {
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 12 }}>
           <button className="btn-primary" type="submit">Guardar datos del Fondo</button>
           {msg && <span style={{ fontSize: 13, color: msg.startsWith("✓") ? "#166534" : "#dc2626" }}>{msg}</span>}
+        </div>
+      </form>
+
+      {/* Parámetros del sistema */}
+      <form className="card" onSubmit={guardarMora}>
+        <h2>Parámetros del sistema</h2>
+        <div className="grid-f">
+          <label>Interés de mora (% mensual)
+            <input type="number" step="0.01" value={params.tasa_mora ?? ""} onChange={(e) => setParams((p) => ({ ...p, tasa_mora: e.target.value }))} placeholder="Ej: 1" />
+          </label>
+          <div style={{ fontSize: 12, color: "var(--gris)", alignSelf: "end", paddingBottom: 8 }}>
+            IVA: {((params.iva ?? 0.19) * 100).toFixed(0)}% · Admin socia: {((params.admin_socia ?? 0.13) * 100).toFixed(0)}% · Admin no socia: {((params.admin_no_socia ?? 0.17) * 100).toFixed(0)}%
+          </div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 12 }}>
+          <button className="btn-primary" type="submit">Guardar parámetros</button>
+          {msgP && <span style={{ fontSize: 13, color: msgP.startsWith("✓") ? "#166534" : "#dc2626" }}>{msgP}</span>}
         </div>
       </form>
 

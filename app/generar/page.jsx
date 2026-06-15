@@ -4,7 +4,6 @@ import { leerExcel, leerHoja, procesarFilas, procesarTexto } from "../../lib/sii
 import { generarArchivosSiigo, descargar } from "../../lib/siigo/generar";
 import { desglosarComision, round2, round6 } from "../../lib/siigo/utils";
 import { fmtPesos } from "../../lib/format";
-import LogoutButton from "../LogoutButton";
 
 const MESES_ABBR = ["ENE","FEB","MAR","ABR","MAY","JUN","JUL","AGO","SEP","OCT","NOV","DIC"];
 
@@ -143,17 +142,9 @@ export default function Generar() {
 
   return (
     <div className="wrap">
-      <div className="header">
-        <div className="header-row">
-          <div>
-            <h1>Generar facturación</h1>
-            <p>Carga el Excel de la mutual, valida y genera los 3 archivos SIIGO</p>
-          </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <a className="logout" href="/">← Tablero</a>
-            <LogoutButton />
-          </div>
-        </div>
+      <div className="page-head">
+        <h1>Generar facturación</h1>
+        <p>Carga el Excel de la mutual, valida y genera los 3 archivos SIIGO</p>
       </div>
 
       {cfgErr && <div className="err">No se pudo cargar la configuración: {cfgErr}</div>}

@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import LogoutButton from "../LogoutButton";
 import { fmtPesos, fmtFecha } from "../../lib/format";
 
 const CUAT = { 1: "1° cuat (Ene–Abr)", 2: "2° cuat (May–Ago)", 3: "3° cuat (Sep–Dic)" };
@@ -72,14 +71,9 @@ export default function FacturasVenta() {
 
   return (
     <div className="wrap">
-      <div className="header">
-        <div className="header-row">
-          <div><h1>Facturas de venta</h1><p>Reserva e IVA por cliente/intermediario (control contable)</p></div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <a className="logout" href="/">← Tablero</a>
-            <LogoutButton />
-          </div>
-        </div>
+      <div className="page-head">
+        <h1>Facturas de venta</h1>
+        <p>Reserva e IVA por cliente/intermediario (control contable)</p>
       </div>
 
       {err && <div className="err">Error: {err}</div>}

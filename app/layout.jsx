@@ -1,4 +1,5 @@
 import "./globals.css";
+import NavBar from "./NavBar";
 
 export const metadata = {
   title: "FMC — Control de Facturación",
@@ -8,7 +9,10 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="es">
-      <body>{children}</body>
+      <body>
+        <NavBar />
+        {children}
+      </body>
     </html>
   );
 }

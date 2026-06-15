@@ -28,6 +28,7 @@ export default function Login() {
   return (
     <div className="login-wrap">
       <form className="login-card" onSubmit={entrar}>
+        <div className="logo-box"><img src="/FMC-LOGO.jpeg" alt="FMC" onError={(e) => { e.target.style.display = "none"; }} /></div>
         <h1>Control de Facturación</h1>
         <p className="sub">Fondo Mutuo de Cobertura S.A.S</p>
         <label>Correo
