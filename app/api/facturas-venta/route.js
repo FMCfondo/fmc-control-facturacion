@@ -9,7 +9,7 @@ export async function GET() {
     const sb = supabaseAdmin();
     const { data, error } = await sb
       .from("cuentas_cobro")
-      .select("id,consecutivo,tipo,cliente_nombre,anio,mes,fecha_elaboracion,factura_inicial,factura_final,num_facturas,valor_facturado,mutuales(nombre,es_socia)")
+      .select("id,consecutivo,tipo,cliente_nombre,anio,mes,cuatrimestre,fecha_elaboracion,factura_inicial,factura_final,num_facturas,valor_facturado,mutuales(nombre,es_socia)")
       .order("anio", { ascending: false })
       .order("mes", { ascending: false, nullsFirst: false })
       .order("consecutivo", { ascending: false });
@@ -22,7 +22,7 @@ export async function GET() {
         cliente: mut ? mut.nombre : (c.cliente_nombre || "—"),
         es_socia: mut ? !!mut.es_socia : false,
         esMutual: !!mut,
-        anio: c.anio, mes: c.mes, fecha: c.fecha_elaboracion,
+        anio: c.anio, mes: c.mes, cuatrimestreManual: c.cuatrimestre, fecha: c.fecha_elaboracion,
         fi: c.factura_inicial, ff: c.factura_final, num: c.num_facturas,
         valor: Number(c.valor_facturado) || 0,
       };
