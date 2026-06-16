@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 
-const VACIA = { nombre: "", nombre_corto: "", nit: "", dv: "", representante: "", direccion: "", ciudad: "", telefono: "", correo: "", es_socia: false, activa: true };
+const VACIA = { nombre: "", nombre_corto: "", nit: "", dv: "", representante: "", direccion: "", ciudad: "", telefono: "", correo: "", correos_envio: "", correos_cc: "", es_socia: false, activa: true };
 
 export default function Clientes() {
   const [mutuales, setMutuales] = useState([]);
@@ -143,7 +143,9 @@ export default function Clientes() {
               <label>Ciudad<input value={form.ciudad} onChange={(e) => set("ciudad", e.target.value)} /></label>
               <label style={{ gridColumn: "1 / -1" }}>Dirección<input value={form.direccion} onChange={(e) => set("direccion", e.target.value)} /></label>
               <label>Teléfono<input value={form.telefono} onChange={(e) => set("telefono", e.target.value)} /></label>
-              <label>Correo<input value={form.correo} onChange={(e) => set("correo", e.target.value)} /></label>
+              <label>Correo (principal)<input value={form.correo} onChange={(e) => set("correo", e.target.value)} /></label>
+              <label style={{ gridColumn: "1 / -1" }}>Correos de envío (separa con coma)<input value={form.correos_envio} onChange={(e) => set("correos_envio", e.target.value)} placeholder="facturacion@mutual.com, gerencia@mutual.com" /></label>
+              <label style={{ gridColumn: "1 / -1" }}>Copias CC (separa con coma)<input value={form.correos_cc} onChange={(e) => set("correos_cc", e.target.value)} placeholder="contador@mutual.com" /></label>
               <label className="chk"><input type="checkbox" checked={!!form.es_socia} onChange={(e) => set("es_socia", e.target.checked)} /> Es socia (admin 13%)</label>
               <label className="chk"><input type="checkbox" checked={!!form.activa} onChange={(e) => set("activa", e.target.checked)} /> Activa</label>
             </div>

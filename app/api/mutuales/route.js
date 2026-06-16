@@ -3,7 +3,7 @@ import { supabaseAdmin } from "../../../lib/supabase";
 
 export const dynamic = "force-dynamic";
 
-const CAMPOS = ["nombre", "nombre_corto", "nit", "dv", "representante", "direccion", "ciudad", "telefono", "correo", "es_socia", "activa"];
+const CAMPOS = ["nombre", "nombre_corto", "nit", "dv", "representante", "direccion", "ciudad", "telefono", "correo", "correos_envio", "correos_cc", "es_socia", "activa"];
 const limpiar = (b) => {
   const o = {};
   for (const k of CAMPOS) if (b[k] !== undefined) o[k] = b[k] === "" ? null : b[k];
