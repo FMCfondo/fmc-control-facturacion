@@ -1,12 +1,31 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import * as XLSX from "xlsx-js-style";
 
 const HOY = () => new Date().toISOString().slice(0, 10);
+const fmtF = (d) => (d ? new Date(String(d).slice(0, 10) + "T12:00:00").toLocaleDateString("es-CO") : "");
 
 export default function Reportes() {
   const [cargando, setCargando] = useState("");
   const [msg, setMsg] = useState("");
+  const [lotes, setLotes] = useState([]);
+  const [bajando, setBajando] = useState(null);
+
+  useEffect(() => {
+    fetch("/api/archivos", { cache: "no-store" }).then((r) => r.json()).then((d) => setLotes(d.lotes || [])).catch(() => {});
+  }, []);
+
+  async function descargarLote(cc) {
+    setBajando(cc);
+    try {
+      const r = await fetch(`/api/archivos?cc=${cc}`, { cache: "no-store" });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error);
+      if (!d.archivos?.length) { alert("Este lote no tiene archivos guardados (se generó antes del archivado en la nube)."); return; }
+      d.archivos.forEach((a, i) => setTimeout(() => window.open(a.url, "_blank"), i * 400));
+    } catch (e) { alert("Error: " + e.message); }
+    setBajando(null);
+  }
 
   async function traer() {
     const r = await fetch("/api/export", { cache: "no-store" });
@@ -14,6 +33,9 @@ export default function Reportes() {
     if (!r.ok) throw new Error(d.error || "Error");
     return d;
   }
+
+  const logDescarga = (descripcion) =>
+    fetch("/api/actividad", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tipo: "Descarga", descripcion }) }).catch(() => {});
 
   // Construye una hoja desde un arreglo de objetos.
   const hoja = (arr) => XLSX.utils.json_to_sheet(arr.length ? arr : [{ vacio: "sin datos" }]);
@@ -29,6 +51,7 @@ export default function Reportes() {
       };
       Object.entries(hojas).forEach(([n, arr]) => XLSX.utils.book_append_sheet(wb, hoja(arr || []), n.slice(0, 31)));
       XLSX.writeFile(wb, `Respaldo FMC - ${HOY()}.xlsx`);
+      logDescarga("Respaldo completo descargado");
     } catch (e) { setMsg("✗ " + e.message); }
     setCargando("");
   }
@@ -40,6 +63,7 @@ export default function Reportes() {
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, hoja(d[clave] || []), nombre.slice(0, 31));
       XLSX.writeFile(wb, `${nombre} - ${HOY()}.xlsx`);
+      logDescarga(`Reporte "${nombre}" descargado`);
     } catch (e) { setMsg("✗ " + e.message); }
     setCargando("");
   }
@@ -75,11 +99,25 @@ export default function Reportes() {
       </div>
 
       <div className="card">
-        <h2>Archivos SIIGO de cada lote</h2>
-        <p style={{ fontSize: 13, color: "var(--gris)" }}>
-          La re-descarga de los 3 archivos SIIGO (Terceros, Facturas, Comprobantes) de cada lote generado se habilitará con el
-          archivado en la nube (próximo paso). Aplicará para los lotes generados de este mes en adelante.
+        <h2>Archivos SIIGO por lote</h2>
+        <p style={{ fontSize: 13, color: "var(--gris)", marginBottom: 14 }}>
+          Re-descarga los 3 archivos (Terceros, Facturas, Comprobantes) de cada lote generado por el sistema.
+          Disponible para lotes generados de este mes en adelante (los anteriores están en tu Excel/carpetas).
         </p>
+        <div className="tbl-wrap" style={{ maxHeight: 400 }}>
+          <table>
+            <thead><tr><th>CC #</th><th>Cliente / Mutual</th><th>Fecha</th><th></th></tr></thead>
+            <tbody>
+              {lotes.map((l) => (
+                <tr key={l.cc}>
+                  <td>{l.cc}</td><td>{l.cliente}</td><td>{fmtF(l.fecha)}</td>
+                  <td><button className="logout" disabled={bajando === l.cc} onClick={() => descargarLote(l.cc)}>{bajando === l.cc ? "Abriendo…" : "⬇ Archivos SIIGO"}</button></td>
+                </tr>
+              ))}
+              {lotes.length === 0 && <tr><td colSpan={4} style={{ color: "var(--gris)" }}>Aún no hay lotes generados por el sistema.</td></tr>}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

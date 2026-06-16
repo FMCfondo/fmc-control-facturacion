@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { leerExcel, leerHoja, procesarFilas, procesarTexto } from "../../lib/siigo/procesar";
-import { generarArchivosSiigo, descargar } from "../../lib/siigo/generar";
+import { generarArchivosSiigo, descargar, aBase64 } from "../../lib/siigo/generar";
 import { desglosarComision, round2, round6 } from "../../lib/siigo/utils";
 import { fmtPesos } from "../../lib/format";
 
@@ -129,6 +129,13 @@ export default function Generar() {
       if (!res.ok) throw new Error(out.error || "Error al registrar");
       setRegistrado(true);
       setMsg(`✓ Lote registrado: cuenta de cobro #${cc}, facturas ${factIni}–${factFin}. Los archivos se descargaron. Para otra mutual, los consecutivos ya avanzaron.`);
+      // Archivar los 3 archivos SIIGO en la nube (para re-descarga desde Reportes).
+      try {
+        await fetch("/api/archivar", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ cc: Number(cc), files: gen.map((f) => ({ name: f.name, base64: aBase64(f), bookType: f.opts.bookType || "xlsx" })) }),
+        });
+      } catch (_) { /* el archivado no debe bloquear */ }
       // Avanzar los consecutivos para el siguiente lote.
       await cargarConsecutivos();
     } catch (e) {
