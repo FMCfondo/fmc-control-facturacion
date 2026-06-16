@@ -46,20 +46,9 @@ export default function CuentaCobroDoc() {
   async function enviar() {
     setEnviando(true); setEnvioMsg("");
     try {
-      setImpr("unido");
-      await new Promise((r) => setTimeout(r, 100)); // dejar renderizar el documento completo
-      const html2pdf = (await import("html2pdf.js")).default;
-      const el = document.getElementById("documento");
-      const pdfBase64 = await html2pdf().set({
-        margin: [10, 10, 10, 10],
-        image: { type: "jpeg", quality: 0.95 },
-        html2canvas: { scale: 2, useCORS: true, windowWidth: 800, scrollY: 0 },
-        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-        pagebreak: { mode: ["css", "legacy"], before: ".anexo-hoja", avoid: ["tr", ".firmas", ".pie"] },
-      }).from(el).outputPdf("datauristring");
       const res = await fetch("/api/enviar-correo", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, to, cc, pdfBase64, mensaje }),
+        body: JSON.stringify({ id, to, cc, mensaje }),
       });
       const out = await res.json();
       if (!res.ok) throw new Error(out.error);

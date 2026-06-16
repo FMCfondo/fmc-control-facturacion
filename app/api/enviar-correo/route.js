@@ -2,8 +2,10 @@ import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
 import { supabaseAdmin } from "../../../lib/supabase";
 import { logActividad } from "../../../lib/actividad";
+import { buildDocumentoHTML, generarPDF } from "../../../lib/pdf";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 export const dynamic = "force-dynamic";
 
 const MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
@@ -48,18 +50,23 @@ function plantilla({ origin, nombre, cc, periodo, total, mensaje, fondo }) {
 
 export async function POST(request) {
   try {
-    const { id, to, cc, pdfBase64, mensaje } = await request.json();
+    const { id, to, cc, mensaje } = await request.json();
     const user = process.env.GMAIL_USER, pass = process.env.GMAIL_APP_PASSWORD;
     if (!user || !pass) return NextResponse.json({ error: "Falta configurar GMAIL_USER y GMAIL_APP_PASSWORD en Vercel" }, { status: 500 });
     const dest = lista(to);
     if (!dest.length) return NextResponse.json({ error: "Indica al menos un destinatario" }, { status: 400 });
 
     const sb = supabaseAdmin();
-    const { data: cuenta, error } = await sb.from("cuentas_cobro").select("*,mutuales(nombre)").eq("id", id).single();
+    const { data: cuenta, error } = await sb.from("cuentas_cobro").select("*,mutuales(*)").eq("id", id).single();
     if (error) throw error;
-    const nombre = cuenta.mutuales?.nombre || cuenta.cliente_nombre || "Cliente";
+    const mutual = cuenta.mutuales || null;
+    const nombre = mutual?.nombre || cuenta.cliente_nombre || "Cliente";
     const periodo = cuenta.mes ? `${MESES[cuenta.mes - 1]} ${cuenta.anio}` : String(cuenta.anio || "");
-    const { data: cfg } = await sb.from("config").select("*");
+    const [{ data: items }, { data: facturas }, { data: cfg }] = await Promise.all([
+      sb.from("items_cuenta_cobro").select("*").eq("cuenta_cobro_id", id),
+      sb.from("facturas_siigo").select("*").eq("cuenta_cobro_id", id).order("consecutivo"),
+      sb.from("config").select("*"),
+    ]);
     const c = Object.fromEntries((cfg || []).map((r) => [r.clave, r.valor]));
     const fondo = {
       nombre: c.fondo_nombre || "Fondo Mutuo de Cobertura S.A.S",
@@ -69,10 +76,12 @@ export async function POST(request) {
     };
     const origin = new URL(request.url).origin;
 
+    // Generar el PDF en el servidor (vectorial, idéntico a la impresión).
+    const html = buildDocumentoHTML({ cuenta, mutual, items: items || [], facturas: facturas || [], fondo, origin });
+    const pdf = await generarPDF(html);
+
     const transport = nodemailer.createTransport({ service: "gmail", auth: { user, pass } });
-    const attachments = pdfBase64
-      ? [{ filename: `Cuenta de cobro ${cuenta.consecutivo} - ${nombre}.pdf`, content: Buffer.from(pdfBase64.split(",").pop(), "base64"), contentType: "application/pdf" }]
-      : [];
+    const attachments = [{ filename: `Cuenta de cobro ${cuenta.consecutivo} - ${nombre}.pdf`, content: pdf, contentType: "application/pdf" }];
 
     await transport.sendMail({
       from: `${fondo.nombre} <${user}>`,
