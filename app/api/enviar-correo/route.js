@@ -2,10 +2,9 @@ import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
 import { supabaseAdmin } from "../../../lib/supabase";
 import { logActividad } from "../../../lib/actividad";
-import { buildDocumentoHTML, generarPDF } from "../../../lib/pdf";
+import { generarPDFCuenta } from "../../../lib/pdf";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
 export const dynamic = "force-dynamic";
 
 const MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
@@ -76,9 +75,15 @@ export async function POST(request) {
     };
     const origin = new URL(request.url).origin;
 
-    // Generar el PDF en el servidor (vectorial, idéntico a la impresión).
-    const html = buildDocumentoHTML({ cuenta, mutual, items: items || [], facturas: facturas || [], fondo, origin });
-    const pdf = await generarPDF(html);
+    // Logo en base64 para el PDF.
+    let logoBase64 = null;
+    try {
+      const lr = await fetch(`${origin}/FMC-LOGO.jpeg`);
+      logoBase64 = Buffer.from(await lr.arrayBuffer()).toString("base64");
+    } catch (_) {}
+
+    // Generar el PDF en el servidor (puro JS, vectorial).
+    const pdf = generarPDFCuenta({ cuenta, mutual, items: items || [], facturas: facturas || [], fondo, logoBase64 });
 
     const transport = nodemailer.createTransport({ service: "gmail", auth: { user, pass } });
     const attachments = [{ filename: `Cuenta de cobro ${cuenta.consecutivo} - ${nombre}.pdf`, content: pdf, contentType: "application/pdf" }];
