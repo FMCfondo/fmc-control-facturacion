@@ -51,8 +51,11 @@ export default function CuentaCobroDoc() {
       const html2pdf = (await import("html2pdf.js")).default;
       const el = document.getElementById("documento");
       const pdfBase64 = await html2pdf().set({
-        margin: 8, image: { type: "jpeg", quality: 0.92 },
-        html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+        margin: [10, 10, 10, 10],
+        image: { type: "jpeg", quality: 0.95 },
+        html2canvas: { scale: 2, useCORS: true, windowWidth: 800, scrollY: 0 },
+        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+        pagebreak: { mode: ["css", "legacy"], before: ".anexo-hoja", avoid: ["tr", ".firmas", ".pie"] },
       }).from(el).outputPdf("datauristring");
       const res = await fetch("/api/enviar-correo", {
         method: "POST", headers: { "Content-Type": "application/json" },
