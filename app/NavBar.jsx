@@ -7,6 +7,7 @@ const LINKS = [
   { href: "/", label: "Tablero" },
   { href: "/generar", label: "Generar facturación" },
   { href: "/facturas-venta", label: "Facturas de venta" },
+  { href: "/reportes", label: "Reportes" },
   { href: "/clientes", label: "Clientes" },
 ];
 
