@@ -27,8 +27,8 @@ function plantilla({ origin, nombre, cc, periodo, total, mensaje, fondo }) {
             <span style="font-size:12px;color:#6b7585">Valor total</span><br><span style="font-size:22px;font-weight:bold;color:#102558">${total}</span>
           </td></tr></table>
           ${mensaje ? `<p style="font-size:14px;line-height:1.6;margin:0 0 16px;color:#3a4358">${mensaje}</p>` : ""}
-          <p style="font-size:14px;line-height:1.6;margin:0">Quedamos atentos a cualquier inquietud.<br>Cordialmente,</p>
-          <p style="font-size:14px;font-weight:bold;margin:6px 0 0;color:#102558">${fondo.nombre}</p>
+          <p style="font-size:14px;line-height:1.6;margin:0 0 14px">Quedamos atentos a cualquier inquietud.<br>Cordialmente,</p>
+          ${fondo.firma ? `<div style="font-size:13px;color:#3a4358;line-height:1.5">${fondo.firma}</div>` : `<p style="font-size:14px;font-weight:bold;margin:0;color:#102558">${fondo.nombre}</p>`}
         </td></tr>
         <tr><td align="center" style="background:#102558;padding:18px 28px;color:#cdd6ea;font-size:12px;line-height:1.6">
           NIT: ${fondo.nit} · ${fondo.direccion}<br>${fondo.correo} · ${fondo.telefono}
@@ -58,6 +58,7 @@ export async function POST(request) {
       nombre: c.fondo_nombre || "Fondo Mutuo de Cobertura S.A.S",
       nit: c.fondo_nit || "901.678.530-0",
       direccion: c.fondo_direccion || "", correo: c.fondo_correo || user, telefono: c.fondo_telefono || "",
+      firma: c.firma_correo || "",
     };
     const origin = new URL(request.url).origin;
 

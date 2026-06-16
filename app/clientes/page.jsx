@@ -43,7 +43,7 @@ export default function Clientes() {
       method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         fondo_nombre: fondo.fondo_nombre, fondo_nit: fondo.fondo_nit, fondo_direccion: fondo.fondo_direccion,
-        fondo_correo: fondo.fondo_correo, fondo_telefono: fondo.fondo_telefono,
+        fondo_correo: fondo.fondo_correo, fondo_telefono: fondo.fondo_telefono, firma_correo: fondo.firma_correo,
       }),
     });
     setMsg(res.ok ? "✓ Datos del Fondo guardados" : "✗ Error al guardar");
@@ -83,6 +83,9 @@ export default function Clientes() {
           <label>Dirección<input value={fondo.fondo_direccion || ""} onChange={(e) => setFondoK("fondo_direccion", e.target.value)} /></label>
           <label>Correo<input value={fondo.fondo_correo || ""} onChange={(e) => setFondoK("fondo_correo", e.target.value)} /></label>
           <label>Teléfono<input value={fondo.fondo_telefono || ""} onChange={(e) => setFondoK("fondo_telefono", e.target.value)} /></label>
+          <label style={{ gridColumn: "1 / -1" }}>Firma de correo (HTML — incluye tratamiento de datos)
+            <textarea rows={6} value={fondo.firma_correo || ""} onChange={(e) => setFondoK("firma_correo", e.target.value)} placeholder="Pega aquí tu firma (puede ser HTML): nombre, cargo, contacto y la cláusula de tratamiento de datos…" style={{ width: "100%", padding: "9px 11px", border: "1px solid #cbd5e1", borderRadius: 8, fontSize: 13, fontFamily: "monospace" }} />
+          </label>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 12 }}>
           <button className="btn-primary" type="submit">Guardar datos del Fondo</button>
