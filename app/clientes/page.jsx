@@ -9,6 +9,7 @@ export default function Clientes() {
   const [params, setParams] = useState({});
   const [msg, setMsg] = useState("");
   const [msgP, setMsgP] = useState("");
+  const [cargando, setCargando] = useState(true);
 
   const [abierto, setAbierto] = useState(false);
   const [form, setForm] = useState(VACIA);
@@ -23,6 +24,7 @@ export default function Clientes() {
     setMutuales(m.mutuales || []);
     setFondo(c.config || {});
     setParams(p.parametros || {});
+    setCargando(false);
   }
   useEffect(() => { cargar(); }, []);
 
@@ -120,6 +122,7 @@ export default function Clientes() {
           <table>
             <thead><tr><th>Nombre</th><th>Corto</th><th>NIT</th><th>DV</th><th>Socia</th><th>Ciudad</th><th>Teléfono</th><th>Correo</th><th>Activa</th><th></th></tr></thead>
             <tbody>
+              {cargando && <tr><td colSpan={10} style={{ textAlign: "center", color: "#64748b", padding: 24 }}>Cargando…</td></tr>}
               {mutuales.map((m) => (
                 <tr key={m.id}>
                   <td>{m.nombre}</td><td>{m.nombre_corto}</td><td>{m.nit}</td><td>{m.dv}</td>

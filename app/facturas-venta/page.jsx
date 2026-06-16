@@ -9,6 +9,7 @@ export default function FacturasVenta() {
   const [cuentas, setCuentas] = useState([]);
   const [params, setParams] = useState({ iva: 0.19, admin_socia: 0.13, admin_no_socia: 0.17 });
   const [err, setErr] = useState("");
+  const [cargando, setCargando] = useState(true);
   const [fAnio, setFAnio] = useState("");
   const [filtros, setFiltros] = useState({});
   const setF = (k, v) => setFiltros((f) => ({ ...f, [k]: v }));
@@ -17,7 +18,8 @@ export default function FacturasVenta() {
     fetch("/api/facturas-venta", { cache: "no-store" })
       .then((r) => r.json())
       .then((d) => { if (d.error) throw new Error(d.error); setCuentas(d.cuentas || []); if (d.params) setParams(d.params); })
-      .catch((e) => setErr(e.message));
+      .catch((e) => setErr(e.message))
+      .finally(() => setCargando(false));
   }, []);
 
   // Mes efectivo: del campo mes o derivado de la fecha (para el histórico).
@@ -131,6 +133,8 @@ export default function FacturasVenta() {
               </tr>
             </thead>
             <tbody>
+              {cargando && <tr><td colSpan={10} style={{ textAlign: "center", color: "var(--gris)", padding: 24 }}>Cargando…</td></tr>}
+              {!cargando && filtradas.length === 0 && <tr><td colSpan={10} style={{ color: "var(--gris)", padding: 16 }}>Sin datos.</td></tr>}
               {filtradas.map((f) => (
                 <tr key={f.id} className={"mes-row-" + f.mesNum}>
                   <td>{f.cc}</td>

@@ -10,6 +10,7 @@ const fmt = (d) => new Date(d).toLocaleString("es-CO", { dateStyle: "short", tim
 export default function Actividad() {
   const [items, setItems] = useState([]);
   const [err, setErr] = useState("");
+  const [cargando, setCargando] = useState(true);
   const [fTipo, setFTipo] = useState("");
   const [q, setQ] = useState("");
 
@@ -17,7 +18,8 @@ export default function Actividad() {
     fetch("/api/actividad", { cache: "no-store" })
       .then((r) => r.json())
       .then((d) => { if (d.error) throw new Error(d.error); setItems(d.actividad || []); })
-      .catch((e) => setErr(e.message));
+      .catch((e) => setErr(e.message))
+      .finally(() => setCargando(false));
   }, []);
 
   const tipos = useMemo(() => [...new Set(items.map((i) => i.tipo))], [items]);
@@ -60,7 +62,8 @@ export default function Actividad() {
                   <td style={{ whiteSpace: "normal" }}>{i.descripcion}</td>
                 </tr>
               ))}
-              {filtrados.length === 0 && <tr><td colSpan={3} style={{ color: "#64748b" }}>Sin eventos todavía.</td></tr>}
+              {cargando && <tr><td colSpan={3} style={{ textAlign: "center", color: "#64748b", padding: 24 }}>Cargando…</td></tr>}
+              {!cargando && filtrados.length === 0 && <tr><td colSpan={3} style={{ color: "#64748b" }}>Sin eventos todavía.</td></tr>}
             </tbody>
           </table>
         </div>
