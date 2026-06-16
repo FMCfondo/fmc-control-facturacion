@@ -226,7 +226,7 @@ export default function CuentaCobroDoc() {
       )}
 
       <style>{`
-        .doc-wrap{max-width:800px;margin:0 auto;padding:16px;font-family:'Segoe UI',system-ui,sans-serif;color:#1a1a2e}
+        .doc-wrap{max-width:800px;margin:0 auto;padding:16px;font-family:"Aptos","Segoe UI",system-ui,sans-serif;color:#1b2440}
         .btn-enviar{background:#c9a14a;color:#102558;border:none;border-radius:8px;padding:10px 18px;font-size:14px;font-weight:700;cursor:pointer}
         .btn-enviar:disabled{opacity:.6;cursor:not-allowed}
         .modal-env{background:#fff;border-radius:12px;padding:24px;width:100%;max-width:460px}
@@ -236,39 +236,39 @@ export default function CuentaCobroDoc() {
         .env-acc{display:flex;justify-content:flex-end;gap:8px;margin-top:8px}
         .ok-box{background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:10px;color:#166534;font-size:13px;margin-bottom:10px}
         .barra{display:flex;justify-content:space-between;margin-bottom:16px}
-        .btn-print{background:#10b981;color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:14px;font-weight:600;cursor:pointer}
-        .btn-sec{background:#e2e8f0;color:#334155;border-radius:8px;padding:10px 16px;text-decoration:none;font-size:14px;font-weight:600}
-        .hoja{background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:32px}
-        .enc{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #0a1628;padding-bottom:16px;margin-bottom:16px}
+        .btn-print{background:#1a3a8f;color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:14px;font-weight:700;cursor:pointer}
+        .btn-sec{background:#eef1f6;color:#334155;border:1px solid #e3e8ef;border-radius:8px;padding:10px 16px;text-decoration:none;font-size:14px;font-weight:600;cursor:pointer}
+        .hoja{background:#fff;border:1px solid #e3e8ef;border-radius:8px;padding:36px}
+        .enc{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #c9a14a;padding-bottom:18px;margin-bottom:18px}
         .enc-izq{display:flex;gap:20px;align-items:center}
         .logo{max-height:130px;max-width:230px;object-fit:contain}
-        .titulo{font-size:22px;font-weight:800;color:#0a1628;letter-spacing:1px}
-        .fondo-nom{font-weight:700;margin-top:8px;font-size:14px}
-        .fondo-info{font-size:11px;color:#475569;margin-top:4px;line-height:1.5}
-        .cc-box{border:2px solid #0a1628;border-radius:8px;padding:10px 16px;text-align:center;min-width:140px}
-        .cc-label{font-size:10px;font-weight:600;color:#475569}
-        .cc-num{font-size:26px;font-weight:800;color:#0a1628}
-        .seccion{background:#0a1628;color:#fff;font-size:12px;font-weight:700;padding:6px 12px;border-radius:6px;letter-spacing:.5px}
+        .titulo{font-size:22px;font-weight:800;color:#102558;letter-spacing:1px}
+        .fondo-nom{font-weight:700;margin-top:8px;font-size:14px;color:#102558}
+        .fondo-info{font-size:11px;color:#6b7585;margin-top:4px;line-height:1.5}
+        .cc-box{background:#102558;color:#fff;border-radius:10px;padding:12px 18px;text-align:center;min-width:150px}
+        .cc-label{font-size:10px;font-weight:600;color:#e3c97a;text-transform:uppercase;letter-spacing:.5px}
+        .cc-num{font-size:28px;font-weight:800;color:#fff;margin-top:2px}
+        .seccion{background:linear-gradient(100deg,#102558,#1a3a8f);color:#fff;font-size:12px;font-weight:700;padding:7px 14px;border-radius:6px;letter-spacing:.5px;border-left:4px solid #c9a14a}
         .cliente{display:grid;grid-template-columns:1fr 1fr;gap:6px 24px;font-size:12px;padding:14px 4px}
         .items{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}
-        .items th{background:#1e293b;color:#fff;padding:8px;text-align:left}
-        .items td{padding:8px;border-bottom:1px solid #e2e8f0}
+        .items th{background:#102558;color:#fff;padding:9px;text-align:left}
+        .items td{padding:9px;border-bottom:1px solid #e3e8ef}
         .items td.c{text-align:center}.items td.r{text-align:right}
         .pie{display:flex;justify-content:space-between;margin-top:20px;gap:24px}
-        .pago{font-size:12px;line-height:2}
-        .tot{font-size:13px;border-collapse:collapse;min-width:240px}
-        .tot td{padding:6px 12px}.tot td.r{text-align:right;font-weight:600}
-        .tot tr.grande td{font-size:16px;font-weight:800;color:#0a1628;border-top:2px solid #0a1628}
-        .firmas{display:flex;justify-content:space-between;gap:40px;margin-top:60px;font-size:11px;font-weight:600;text-align:center}
+        .pago{font-size:12px;line-height:2;color:#3a4358}
+        .tot{font-size:13px;border-collapse:collapse;min-width:250px}
+        .tot td{padding:7px 14px}.tot td.r{text-align:right;font-weight:600}
+        .tot tr.grande td{font-size:17px;font-weight:800;color:#102558;border-top:2px solid #c9a14a;background:#f7f3e8}
+        .firmas{display:flex;justify-content:space-between;gap:40px;margin-top:60px;font-size:11px;font-weight:600;text-align:center;color:#3a4358}
         .firmas>div{flex:1}
-        .linea{border-top:1px solid #0a1628;margin-bottom:6px}
+        .linea{border-top:1px solid #102558;margin-bottom:6px}
         .anexo-hoja{margin-top:24px}
-        .anexo-tit{font-size:20px;font-weight:800;color:#0a1628;letter-spacing:1px}
+        .anexo-tit{font-size:20px;font-weight:800;color:#102558;letter-spacing:1px;border-bottom:3px solid #c9a14a;padding-bottom:8px;display:inline-block}
         .anexo-tbl{width:100%;border-collapse:collapse;font-size:11px;margin-top:10px}
-        .anexo-tbl th{background:#1e293b;color:#fff;padding:7px;text-align:left}
-        .anexo-tbl td{padding:7px;border-bottom:1px solid #e2e8f0}
+        .anexo-tbl th{background:#102558;color:#fff;padding:8px;text-align:left}
+        .anexo-tbl td{padding:8px;border-bottom:1px solid #e3e8ef}
         .anexo-tbl td.r{text-align:right}
-        .anexo-tbl tr.anexo-total td{font-weight:800;border-top:2px solid #0a1628;background:#f1f5f9}
+        .anexo-tbl tr.anexo-total td{font-weight:800;border-top:2px solid #c9a14a;background:#f7f3e8;color:#102558}
         @media print {
           .no-print{display:none}
           .oculto-print{display:none}
