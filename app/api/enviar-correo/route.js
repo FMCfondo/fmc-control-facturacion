@@ -30,7 +30,7 @@ function plantilla({ origin, nombre, cc, periodo, total, mensaje, fondo }) {
         </td></tr>
         <tr><td style="padding:28px">
           <p style="font-size:15px;margin:0 0 12px">Estimados señores <strong>${nombre}</strong>,</p>
-          <p style="font-size:14px;line-height:1.6;margin:0 0 16px">Adjunto encontrarán la <strong>cuenta de cobro N° ${cc}</strong> correspondiente al período <strong>${periodo}</strong>, junto con la relación de facturas generadas.</p>
+          <p style="font-size:14px;line-height:1.6;margin:0 0 16px">Adjunto encontrarán la <strong>cuenta de cobro N° ${cc}</strong>, correspondiente a las <strong>garantías del mes de ${periodo}</strong>, junto con la relación de facturas generadas.</p>
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6fa;border-radius:10px;margin:8px 0 18px"><tr><td style="padding:14px 18px">
             <span style="font-size:12px;color:#6b7585">Valor total</span><br><span style="font-size:22px;font-weight:bold;color:#102558">${total}</span>
           </td></tr></table>
@@ -60,7 +60,13 @@ export async function POST(request) {
     if (error) throw error;
     const mutual = cuenta.mutuales || null;
     const nombre = mutual?.nombre || cuenta.cliente_nombre || "Cliente";
-    const periodo = cuenta.mes ? `${MESES[cuenta.mes - 1]} ${cuenta.anio}` : String(cuenta.anio || "");
+    // Período de las garantías = mes ANTERIOR a la elaboración (se factura mes vencido).
+    let periodo = String(cuenta.anio || "");
+    if (cuenta.mes) {
+      let pm = cuenta.mes - 1, pa = cuenta.anio;
+      if (pm < 1) { pm = 12; pa = pa - 1; }
+      periodo = `${MESES[pm - 1]} ${pa}`;
+    }
     const [{ data: items }, { data: facturas }, { data: cfg }] = await Promise.all([
       sb.from("items_cuenta_cobro").select("*").eq("cuenta_cobro_id", id),
       sb.from("facturas_siigo").select("*").eq("cuenta_cobro_id", id).order("consecutivo"),
