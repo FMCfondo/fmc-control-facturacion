@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
 import { supabaseAdmin } from "../../../lib/supabase";
+import { logActividad } from "../../../lib/actividad";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,10 +16,16 @@ function plantilla({ origin, nombre, cc, periodo, total, mensaje, fondo }) {
   <div style="margin:0;padding:0;background:#f4f6fa;font-family:Arial,Helvetica,sans-serif;color:#1b2440">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:24px 0"><tr><td align="center">
       <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 4px 18px rgba(16,37,88,.12)">
-        <tr><td style="background:linear-gradient(100deg,#102558,#1a3a8f);padding:24px 28px;border-bottom:3px solid #c9a14a">
-          <img src="${logo}" alt="" height="50" style="background:#fff;border-radius:8px;padding:4px">
-          <div style="color:#fff;font-size:18px;font-weight:bold;margin-top:12px">${fondo.nombre}</div>
-          <div style="color:#e3c97a;font-size:13px">Cuenta de cobro</div>
+        <tr><td style="background:linear-gradient(100deg,#102558,#1a3a8f);padding:22px 28px;border-bottom:3px solid #c9a14a">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+            <td align="left" valign="middle">
+              <div style="color:#fff;font-size:19px;font-weight:bold">${fondo.nombre}</div>
+              <div style="color:#e3c97a;font-size:13px;margin-top:3px">Cuenta de cobro</div>
+            </td>
+            <td align="right" valign="middle" width="140">
+              <img src="${logo}" alt="" height="78" style="background:#fff;border-radius:10px;padding:6px">
+            </td>
+          </tr></table>
         </td></tr>
         <tr><td style="padding:28px">
           <p style="font-size:15px;margin:0 0 12px">Estimados señores <strong>${nombre}</strong>,</p>
@@ -76,6 +83,11 @@ export async function POST(request) {
       attachments,
     });
 
+    await logActividad({
+      tipo: "Correo enviado",
+      descripcion: `Cuenta de cobro #${cuenta.consecutivo} enviada a ${dest.join(", ")}${lista(cc).length ? " (CC: " + lista(cc).join(", ") + ")" : ""}`,
+      entidad: "cuenta_cobro", entidad_id: cuenta.consecutivo,
+    });
     return NextResponse.json({ ok: true });
   } catch (e) {
     return NextResponse.json({ error: e.message }, { status: 500 });

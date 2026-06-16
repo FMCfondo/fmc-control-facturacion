@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../lib/supabase";
+import { logActividad } from "../../../lib/actividad";
 
 // POST → crea la cuenta de cobro + sus facturas (detalle por asociado) en una operación.
 // Body: { cuenta: {...}, facturas: [...] }
@@ -34,6 +35,12 @@ export async function POST(request) {
         throw e2;
       }
     }
+    await logActividad({
+      tipo: "Lote generado",
+      descripcion: `Cuenta de cobro #${cuenta.consecutivo} generada con ${facturas?.length || 0} factura(s)`,
+      entidad: "cuenta_cobro", entidad_id: cuenta.consecutivo,
+      detalle: { facturas: facturas?.length || 0, valor: cuenta.valor_facturado },
+    });
     return NextResponse.json({ ok: true, cuenta_cobro_id: cc.id });
   } catch (e) {
     return NextResponse.json({ error: e.message }, { status: 500 });

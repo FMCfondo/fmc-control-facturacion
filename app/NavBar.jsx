@@ -8,6 +8,7 @@ const LINKS = [
   { href: "/generar", label: "Generar facturación" },
   { href: "/facturas-venta", label: "Facturas de venta" },
   { href: "/reportes", label: "Reportes" },
+  { href: "/actividad", label: "Actividad" },
   { href: "/clientes", label: "Clientes" },
 ];
 

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../lib/supabase";
+import { logActividad } from "../../../lib/actividad";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +30,7 @@ export async function POST(request) {
       metodo: b.metodo || null, notas: b.notas || null,
     });
     if (error) throw error;
+    await logActividad({ tipo: "Pago registrado", descripcion: `Pago de ${Number(b.valor).toLocaleString("es-CO")} registrado`, entidad: "pago", entidad_id: b.cuenta_cobro_id });
     return NextResponse.json({ ok: true });
   } catch (e) {
     return NextResponse.json({ error: e.message }, { status: 500 });

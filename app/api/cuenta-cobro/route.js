@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../lib/supabase";
+import { logActividad } from "../../../lib/actividad";
 
 export const dynamic = "force-dynamic";
 
@@ -46,6 +47,7 @@ export async function POST(request) {
     const { data, error } = await sb.from("cuentas_cobro").insert(datos).select("id").single();
     if (error) throw error;
     await guardarItems(sb, data.id, body.items);
+    await logActividad({ tipo: "Cuenta creada", descripcion: `Cuenta de cobro #${datos.consecutivo} creada manualmente`, entidad: "cuenta_cobro", entidad_id: datos.consecutivo });
     return NextResponse.json({ ok: true, id: data.id });
   } catch (e) {
     return NextResponse.json({ error: e.message }, { status: 500 });
@@ -81,6 +83,8 @@ export async function PATCH(request) {
     const { error } = await sb.from("cuentas_cobro").update(datos).eq("id", body.id);
     if (error) throw error;
     if (body.items !== undefined) await guardarItems(sb, body.id, body.items);
+    const campos = Object.keys(datos).join(", ");
+    await logActividad({ tipo: "Cuenta modificada", descripcion: `Cuenta de cobro modificada (campos: ${campos})`, entidad: "cuenta_cobro", entidad_id: body.id, detalle: datos });
     return NextResponse.json({ ok: true });
   } catch (e) {
     return NextResponse.json({ error: e.message }, { status: 500 });
@@ -95,6 +99,7 @@ export async function DELETE(request) {
     const sb = supabaseAdmin();
     const { error } = await sb.from("cuentas_cobro").delete().eq("id", id);
     if (error) throw error;
+    await logActividad({ tipo: "Cuenta eliminada", descripcion: "Cuenta de cobro eliminada", entidad: "cuenta_cobro", entidad_id: id });
     return NextResponse.json({ ok: true });
   } catch (e) {
     return NextResponse.json({ error: e.message }, { status: 500 });
