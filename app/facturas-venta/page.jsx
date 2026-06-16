@@ -30,7 +30,7 @@ export default function FacturasVenta() {
     const admin = c.esMutual ? base * pctAdmin : 0;
     const reserva = c.esMutual ? base - admin : 0;
     const cuat = c.cuatrimestreManual || cuatDeMes(mesDe(c)); // override manual o derivado
-    return { ...c, base, iva, admin, reserva, cuat, cuatAuto: cuatDeMes(mesDe(c)) };
+    return { ...c, base, iva, admin, reserva, cuat, cuatAuto: cuatDeMes(mesDe(c)), mesNum: mesDe(c) };
   }), [cuentas, params]);
 
   const anios = [...new Set(filas.map((f) => f.anio).filter(Boolean))].sort((a, b) => b - a);
@@ -102,6 +102,11 @@ export default function FacturasVenta() {
 
       <div className="card">
         <h2>Por cliente / intermediario ({filtradas.length})</h2>
+        <div className="leyenda">
+          {["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"].map((m, i) => (
+            <span key={m} className={"mes-row-" + (i + 1)}>{m}</span>
+          ))}
+        </div>
         <div className="tbl-wrap">
           <table>
             <thead>
@@ -127,7 +132,7 @@ export default function FacturasVenta() {
             </thead>
             <tbody>
               {filtradas.map((f) => (
-                <tr key={f.id} className={"cuat-row-" + f.cuat}>
+                <tr key={f.id} className={"mes-row-" + f.mesNum}>
                   <td>{f.cc}</td>
                   <td>{fmtFecha(f.fecha)}</td>
                   <td>
@@ -140,9 +145,9 @@ export default function FacturasVenta() {
                   <td>{f.fi && f.ff ? `${f.fi}–${f.ff}` : "—"}</td>
                   <td className="num">{fmtPesos(f.valor)}</td>
                   <td className="num">{fmtPesos(f.base)}</td>
-                  <td className={"num iva-cell cuat-" + f.cuat}>{fmtPesos(f.iva)}</td>
-                  <td className="num">{f.esMutual ? fmtPesos(f.admin) : "—"}</td>
-                  <td className="num"><b>{f.esMutual ? fmtPesos(f.reserva) : "—"}</b></td>
+                  <td className={"num colcuat ivastrong cuat-" + f.cuat}>{fmtPesos(f.iva)}</td>
+                  <td className={"num colcuat cuat-" + f.cuat}>{f.esMutual ? fmtPesos(f.admin) : "—"}</td>
+                  <td className={"num colcuat cuat-" + f.cuat}><b>{f.esMutual ? fmtPesos(f.reserva) : "—"}</b></td>
                 </tr>
               ))}
             </tbody>
@@ -160,14 +165,31 @@ export default function FacturasVenta() {
         .kpi.cuat-3{border-left:5px solid #22c55e}
         .cuat-sel{border:1px solid #cbd5e1;border-radius:6px;padding:2px 4px;font-size:11px;font-weight:700;color:#fff;cursor:pointer}
         .cuat-sel.cuat-1{background:#3b82f6}.cuat-sel.cuat-2{background:#f97316}.cuat-sel.cuat-3{background:#22c55e}.cuat-sel.cuat-0{background:#94a3b8}
-        .cuat-row-1{background:#eff6ff !important}
-        .cuat-row-2{background:#fff7ed !important}
-        .cuat-row-3{background:#f0fdf4 !important}
-        /* Columna IVA con color más fuerte */
-        td.iva-cell.cuat-1{background:#bfdbfe;font-weight:700}
-        td.iva-cell.cuat-2{background:#fed7aa;font-weight:700}
-        td.iva-cell.cuat-3{background:#bbf7d0;font-weight:700}
-        td.iva-cell.cuat-0{background:#e2e8f0}
+        /* Color de fila por mes (tonos serios y empresariales) */
+        .mes-row-1{background:#dde6f2 !important}   /* Ene · azul marino */
+        .mes-row-2{background:#e1ebe0 !important}   /* Feb · verde militar */
+        .mes-row-3{background:#f0dfe3 !important}   /* Mar · vinotinto */
+        .mes-row-4{background:#e3e8ee !important}   /* Abr · gris azulado */
+        .mes-row-5{background:#f1e8d4 !important}   /* May · ocre */
+        .mes-row-6{background:#d9eae9 !important}   /* Jun · petróleo */
+        .mes-row-7{background:#e8e0f0 !important}   /* Jul · púrpura */
+        .mes-row-8{background:#f0e3d8 !important}   /* Ago · terracota */
+        .mes-row-9{background:#dceadf !important}   /* Sep · verde bosque */
+        .mes-row-10{background:#e0e2f1 !important}  /* Oct · índigo */
+        .mes-row-11{background:#ece1d4 !important}  /* Nov · canela */
+        .mes-row-12{background:#e2e6ea !important}  /* Dic · pizarra */
+        /* Las 3 columnas IVA/Admin/Reserva conservan su color por cuatrimestre */
+        td.colcuat.cuat-1{background:#eaf2fd}
+        td.colcuat.cuat-2{background:#fdf0e3}
+        td.colcuat.cuat-3{background:#eafaef}
+        td.colcuat.cuat-0{background:#eef1f6}
+        td.colcuat.ivastrong{font-weight:700}
+        td.colcuat.ivastrong.cuat-1{background:#bfdbfe}
+        td.colcuat.ivastrong.cuat-2{background:#fed7aa}
+        td.colcuat.ivastrong.cuat-3{background:#bbf7d0}
+        /* Leyenda de meses */
+        .leyenda{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+        .leyenda span{font-size:11px;padding:3px 9px;border-radius:6px;font-weight:600;color:#334155}
       `}</style>
     </div>
   );

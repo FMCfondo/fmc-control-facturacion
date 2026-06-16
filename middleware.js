@@ -41,7 +41,12 @@ export async function middleware(request) {
       } catch (_) { /* si falla el chequeo, no bloquear */ }
     }
 
+    // Allowlist: solo los correos autorizados pueden usar la app (defensa extra).
+    const permitidos = (process.env.ALLOWED_EMAILS || "").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
+    const correoOk = !permitidos.length || (user && permitidos.includes((user.email || "").toLowerCase()));
+
     if (!user && !esLogin) return redirigirLogin(request);
+    if (user && !correoOk && !esLogin) return redirigirLogin(request); // correo no autorizado
     if (user && necesitaMfa && !esLogin) return redirigirLogin(request); // completar 2FA
     if (user && !necesitaMfa && esLogin) {
       const u = request.nextUrl.clone();
