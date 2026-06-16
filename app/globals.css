@@ -88,6 +88,9 @@ tbody tr:hover{background:#eef3fb}
 
 .err{background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:16px;color:#991b1b;font-size:13px;margin-bottom:16px}
 
+/* ─── MODAL (overlay global) ─── */
+.modal-bg{position:fixed;inset:0;background:rgba(16,37,88,.55);display:flex;align-items:center;justify-content:center;padding:16px;z-index:60}
+
 /* ─── LOGIN ─── */
 .login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px;background:linear-gradient(125deg,var(--azul-osc),var(--azul))}
 .login-card{background:#fff;border-radius:16px;padding:36px;width:100%;max-width:390px;box-shadow:0 24px 70px rgba(16,37,88,.4);border-top:4px solid var(--dorado)}
