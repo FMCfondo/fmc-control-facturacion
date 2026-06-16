@@ -32,8 +32,18 @@ export async function middleware(request) {
 
     const { data: { user } } = await supabase.auth.getUser();
 
+    // ¿Tiene 2FA activado y aún no lo completó en esta sesión?
+    let necesitaMfa = false;
+    if (user) {
+      try {
+        const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+        necesitaMfa = aal && aal.nextLevel === "aal2" && aal.currentLevel === "aal1";
+      } catch (_) { /* si falla el chequeo, no bloquear */ }
+    }
+
     if (!user && !esLogin) return redirigirLogin(request);
-    if (user && esLogin) {
+    if (user && necesitaMfa && !esLogin) return redirigirLogin(request); // completar 2FA
+    if (user && !necesitaMfa && esLogin) {
       const u = request.nextUrl.clone();
       u.pathname = "/";
       return NextResponse.redirect(u);
