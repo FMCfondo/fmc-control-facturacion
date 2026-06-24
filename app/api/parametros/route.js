@@ -1,24 +1,29 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../lib/supabase";
+import { requireUser } from "../../../lib/requireUser";
 
 export const dynamic = "force-dynamic";
 
 // GET → { iva, admin_socia, admin_no_socia, dias_vencimiento, tasa_mora, ... }
 export async function GET() {
   try {
+    const { response } = await requireUser();
+    if (response) return response;
     const sb = supabaseAdmin();
     const { data, error } = await sb.from("parametros").select("*");
     if (error) throw error;
     const obj = Object.fromEntries((data || []).map((r) => [r.clave, Number(r.valor)]));
     return NextResponse.json({ parametros: obj });
   } catch (e) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    console.error(e); return NextResponse.json({ error: "Error del servidor" }, { status: 500 });
   }
 }
 
 // PATCH → { clave: valor, ... } actualiza parámetros existentes (upsert).
 export async function PATCH(request) {
   try {
+    const { response } = await requireUser();
+    if (response) return response;
     const cambios = await request.json();
     const filas = Object.entries(cambios).map(([clave, valor]) => ({ clave, valor: Number(valor) }));
     const sb = supabaseAdmin();
@@ -26,6 +31,6 @@ export async function PATCH(request) {
     if (error) throw error;
     return NextResponse.json({ ok: true });
   } catch (e) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    console.error(e); return NextResponse.json({ error: "Error del servidor" }, { status: 500 });
   }
 }

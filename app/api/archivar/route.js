@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../lib/supabase";
+import { requireUser } from "../../../lib/requireUser";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,6 +14,8 @@ const CT = {
 // POST { cc, files:[{name, base64, bookType}] } → sube los archivos del lote a Storage.
 export async function POST(request) {
   try {
+    const { response } = await requireUser();
+    if (response) return response;
     const { cc, files } = await request.json();
     if (!cc || !Array.isArray(files)) return NextResponse.json({ error: "Faltan datos" }, { status: 400 });
     const ccNum = Number(cc);
@@ -33,6 +36,6 @@ export async function POST(request) {
     }
     return NextResponse.json({ ok: true });
   } catch (e) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    console.error(e); return NextResponse.json({ error: "Error del servidor" }, { status: 500 });
   }
 }

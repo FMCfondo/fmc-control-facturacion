@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../lib/supabase";
 import { logActividad } from "../../../lib/actividad";
+import { requireUser } from "../../../lib/requireUser";
 
 export const dynamic = "force-dynamic";
 const BUCKET = "archivos";
@@ -9,6 +10,8 @@ const BUCKET = "archivos";
 // GET ?cc=N     → URLs firmadas de los archivos de ese lote (y registra la descarga).
 export async function GET(request) {
   try {
+    const { response } = await requireUser();
+    if (response) return response;
     const cc = new URL(request.url).searchParams.get("cc");
     const sb = supabaseAdmin();
 
@@ -36,6 +39,6 @@ export async function GET(request) {
     }));
     return NextResponse.json({ lotes });
   } catch (e) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    console.error(e); return NextResponse.json({ error: "Error del servidor" }, { status: 500 });
   }
 }

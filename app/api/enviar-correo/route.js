@@ -3,6 +3,7 @@ import nodemailer from "nodemailer";
 import { supabaseAdmin } from "../../../lib/supabase";
 import { logActividad } from "../../../lib/actividad";
 import { generarPDFCuenta } from "../../../lib/pdf";
+import { requireUser } from "../../../lib/requireUser";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -51,6 +52,8 @@ function plantilla({ origin, nombre, cc, periodo, total, mensaje, fondo }) {
 
 export async function POST(request) {
   try {
+    const { response } = await requireUser();
+    if (response) return response;
     const { id, to, cc, mensaje } = await request.json();
     const user = process.env.GMAIL_USER, pass = process.env.GMAIL_APP_PASSWORD;
     if (!user || !pass) return NextResponse.json({ error: "Falta configurar GMAIL_USER y GMAIL_APP_PASSWORD en Vercel" }, { status: 500 });
@@ -112,6 +115,6 @@ export async function POST(request) {
     });
     return NextResponse.json({ ok: true });
   } catch (e) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    console.error(e); return NextResponse.json({ error: "Error del servidor" }, { status: 500 });
   }
 }
