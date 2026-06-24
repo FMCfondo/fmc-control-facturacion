@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../lib/supabase";
-import { logActividad } from "../../../lib/actividad";
+import { logActividad, resumenCuenta, fmtPesosLog } from "../../../lib/actividad";
 import { requireUser } from "../../../lib/requireUser";
 
 export const dynamic = "force-dynamic";
@@ -37,7 +37,15 @@ export async function POST(request) {
       metodo: b.metodo || null, notas: b.notas || null,
     });
     if (error) throw error;
-    await logActividad({ tipo: "Pago registrado", descripcion: `Pago de ${Number(b.valor).toLocaleString("es-CO")} registrado`, entidad: "pago", entidad_id: b.cuenta_cobro_id });
+    const r = await resumenCuenta(sb, b.cuenta_cobro_id);
+    await logActividad({
+      tipo: "Pago registrado",
+      descripcion: r
+        ? `Pago de ${fmtPesosLog(b.valor)} registrado — CC #${r.consecutivo} · ${r.cliente}${b.metodo ? ` · ${b.metodo}` : ""}`
+        : `Pago de ${fmtPesosLog(b.valor)} registrado`,
+      entidad: "pago", entidad_id: r?.consecutivo ?? b.cuenta_cobro_id,
+      detalle: { valor: Number(b.valor), fecha: b.fecha, metodo: b.metodo || null, notas: b.notas || null, cuenta: r },
+    });
     return NextResponse.json({ ok: true });
   } catch (e) {
     console.error(e); return NextResponse.json({ error: "Error del servidor" }, { status: 500 });
@@ -53,13 +61,31 @@ export async function DELETE(request) {
     const b = await request.json();
     const sb = supabaseAdmin();
     if (b.cuenta_cobro_id) {
+      // Borrado de TODOS los pagos de una cuenta: registrar cuántos y el total.
+      const r = await resumenCuenta(sb, b.cuenta_cobro_id);
+      const { data: prev } = await sb.from("pagos").select("valor").eq("cuenta_cobro_id", b.cuenta_cobro_id);
+      const n = prev?.length || 0;
+      const tot = (prev || []).reduce((s, p) => s + (Number(p.valor) || 0), 0);
       const { error } = await sb.from("pagos").delete().eq("cuenta_cobro_id", b.cuenta_cobro_id);
       if (error) throw error;
+      if (n > 0) await logActividad({
+        tipo: "Pagos eliminados",
+        descripcion: r ? `${n} pago(s) eliminados (total ${fmtPesosLog(tot)}) — CC #${r.consecutivo} · ${r.cliente}` : `${n} pago(s) eliminados`,
+        entidad: "pago", entidad_id: r?.consecutivo ?? b.cuenta_cobro_id, detalle: { cantidad: n, total: tot, cuenta: r },
+      });
       return NextResponse.json({ ok: true });
     }
     if (!b.id) return NextResponse.json({ error: "Falta el id o cuenta_cobro_id" }, { status: 400 });
+    // Borrado de UN pago: registrar valor y cuenta.
+    const { data: pago } = await sb.from("pagos").select("cuenta_cobro_id,valor,fecha,metodo").eq("id", b.id).single();
+    const r = pago ? await resumenCuenta(sb, pago.cuenta_cobro_id) : null;
     const { error } = await sb.from("pagos").delete().eq("id", b.id);
     if (error) throw error;
+    await logActividad({
+      tipo: "Pago eliminado",
+      descripcion: pago && r ? `Pago de ${fmtPesosLog(pago.valor)} eliminado — CC #${r.consecutivo} · ${r.cliente}` : "Pago eliminado",
+      entidad: "pago", entidad_id: r?.consecutivo ?? b.id, detalle: { pago, cuenta: r },
+    });
     return NextResponse.json({ ok: true });
   } catch (e) {
     console.error(e); return NextResponse.json({ error: "Error del servidor" }, { status: 500 });

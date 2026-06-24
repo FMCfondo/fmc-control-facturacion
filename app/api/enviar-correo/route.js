@@ -110,8 +110,9 @@ export async function POST(request) {
 
     await logActividad({
       tipo: "Correo enviado",
-      descripcion: `Cuenta de cobro #${cuenta.consecutivo} enviada a ${dest.join(", ")}${lista(cc).length ? " (CC: " + lista(cc).join(", ") + ")" : ""}`,
+      descripcion: `Cuenta de cobro #${cuenta.consecutivo} (${nombre}) enviada a ${dest.join(", ")}${lista(cc).length ? " (CC: " + lista(cc).join(", ") + ")" : ""}`,
       entidad: "cuenta_cobro", entidad_id: cuenta.consecutivo,
+      detalle: { cliente: nombre, total: pesos(cuenta.valor_facturado), periodo, para: dest, cc: lista(cc) },
     });
     return NextResponse.json({ ok: true });
   } catch (e) {
