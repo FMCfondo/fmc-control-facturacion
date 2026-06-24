@@ -5,10 +5,12 @@ const securityHeaders = [
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   { key: "X-DNS-Prefetch-Control", value: "off" },
   { key: "Strict-Transport-Security", value: "max-age=31536000" },
+  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
 ];
 
 const nextConfig = {
   reactStrictMode: true,
+  poweredByHeader: false,
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

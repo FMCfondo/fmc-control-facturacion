@@ -107,3 +107,13 @@ tbody tr:hover{background:#eef3fb}
 .login-err{background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px;color:#991b1b;font-size:12px;margin-bottom:14px}
 
 @media(max-width:600px){.header-row{flex-direction:column}}
+
+/* ─── ACCESIBILIDAD Y PULIDO ─── */
+html{scroll-behavior:smooth}
+:focus-visible{outline:2px solid var(--azul-claro);outline-offset:2px;border-radius:4px}
+.navbar :focus-visible{outline-color:var(--dorado-claro)}
+/* Indicador de columna ordenada (además de la flecha) */
+th.sortable[aria-sort="ascending"],th.sortable[aria-sort="descending"]{color:var(--dorado-claro)}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+/* En móvil, la tabla de la barra de navegación no se amontona */
+@media(max-width:820px){.navbar .links{gap:6px}.navlink{padding:8px 12px;font-size:13px}}

@@ -260,6 +260,16 @@ export default function CuentasManager({ cuentas, mutuales }) {
   const flecha = (k) => (orden.campo === k ? (orden.dir === 1 ? " ▲" : " ▼") : "");
   const hayFiltros = Object.values(filtros).some(Boolean) || orden.campo;
 
+  // Encabezado ordenable accesible: clic o teclado (Enter/Espacio) + aria-sort.
+  const ThSort = ({ k, children }) => (
+    <th className="sortable" role="button" tabIndex={0}
+        aria-sort={orden.campo === k ? (orden.dir === 1 ? "ascending" : "descending") : "none"}
+        onClick={() => ordenarPor(k)}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); ordenarPor(k); } }}>
+      {children}{flecha(k)}
+    </th>
+  );
+
   return (
     <>
     <div className="cards">
@@ -281,17 +291,17 @@ export default function CuentasManager({ cuentas, mutuales }) {
         <table>
           <thead>
             <tr>
-              <th className="sortable" onClick={() => ordenarPor("consecutivo")}>CC #{flecha("consecutivo")}</th>
-              <th className="sortable" onClick={() => ordenarPor("tipo")}>Tipo{flecha("tipo")}</th>
-              <th className="sortable" onClick={() => ordenarPor("cliente")}>Cliente / Mutual{flecha("cliente")}</th>
-              <th className="sortable" onClick={() => ordenarPor("mes")}>Mes{flecha("mes")}</th>
-              <th className="sortable" onClick={() => ordenarPor("anio")}>Año{flecha("anio")}</th>
-              <th className="sortable" onClick={() => ordenarPor("fecha")}>Fecha{flecha("fecha")}</th>
-              <th className="sortable" onClick={() => ordenarPor("rango")}>Rango facturas{flecha("rango")}</th>
-              <th className="sortable" onClick={() => ordenarPor("facturado")}>Facturado{flecha("facturado")}</th>
-              <th className="sortable" onClick={() => ordenarPor("recibido")}>Recibido{flecha("recibido")}</th>
-              <th className="sortable" onClick={() => ordenarPor("saldo")}>Saldo{flecha("saldo")}</th>
-              <th className="sortable" onClick={() => ordenarPor("estado")}>Estado{flecha("estado")}</th>
+              <ThSort k="consecutivo">CC #</ThSort>
+              <ThSort k="tipo">Tipo</ThSort>
+              <ThSort k="cliente">Cliente / Mutual</ThSort>
+              <ThSort k="mes">Mes</ThSort>
+              <ThSort k="anio">Año</ThSort>
+              <ThSort k="fecha">Fecha</ThSort>
+              <ThSort k="rango">Rango facturas</ThSort>
+              <ThSort k="facturado">Facturado</ThSort>
+              <ThSort k="recibido">Recibido</ThSort>
+              <ThSort k="saldo">Saldo</ThSort>
+              <ThSort k="estado">Estado</ThSort>
               <th></th>
             </tr>
             <tr className="filtros">
