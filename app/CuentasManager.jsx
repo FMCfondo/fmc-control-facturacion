@@ -1,6 +1,7 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { fmtPesos, fmtFecha } from "../lib/format";
+import { IVA } from "../lib/siigo/constantes";
 
 const VACIA = {
   tipo: "regular", mutual_id: "", cliente_nombre: "", consecutivo: "",
@@ -10,11 +11,11 @@ const VACIA = {
 };
 
 export default function CuentasManager({ cuentas, mutuales }) {
+  // El tablero (page.jsx) es force-dynamic + noStore, así que estos datos ya
+  // llegan frescos del servidor; no hace falta volver a pedirlos al montar.
   const [lista, setLista] = useState(cuentas);
-  // Al montar, recarga datos frescos de la BD (evita ver una versión cacheada de la página).
-  useEffect(() => { recargar(); /* eslint-disable-next-line */ }, []);
 
-  // Recarga la lista desde la BD (sustituye a router.refresh, más confiable).
+  // Recarga la lista desde la BD tras un cambio (alta/edición/pago/borrado).
   async function recargar() {
     try {
       const r = await fetch("/api/cuenta-cobro", { cache: "no-store" });
@@ -135,7 +136,7 @@ export default function CuentasManager({ cuentas, mutuales }) {
         body.items = modalItems;
         // Si hay ítems, el valor facturado = subtotal + IVA (19%).
         if (modalItems.some((it) => it.descripcion)) {
-          body.valor_facturado = Math.round(subtotalItems * 1.19 * 100) / 100;
+          body.valor_facturado = Math.round(subtotalItems * (1 + IVA) * 100) / 100;
         }
       } else {
         body.cliente_nombre = null;
@@ -342,7 +343,7 @@ export default function CuentasManager({ cuentas, mutuales }) {
       </div>
 
       {abierto && (
-        <div className="modal-bg" onClick={(e) => e.target.className === "modal-bg" && setAbierto(false)}>
+        <div className="modal-bg" onClick={(e) => e.target === e.currentTarget && setAbierto(false)}>
           <form className="modal" onSubmit={guardar}>
             <h3>{editId ? "Editar cuenta de cobro" : "Nueva cuenta de cobro manual"}</h3>
             <div className="grid2">
@@ -402,7 +403,7 @@ export default function CuentasManager({ cuentas, mutuales }) {
                 ))}
                 {modalItems.length > 0 && (
                   <div className="items-tot">
-                    Subtotal: {fmtPesos(subtotalItems)} · IVA: {fmtPesos(subtotalItems * 0.19)} · <b>Total: {fmtPesos(subtotalItems * 1.19)}</b>
+                    Subtotal: {fmtPesos(subtotalItems)} · IVA: {fmtPesos(subtotalItems * IVA)} · <b>Total: {fmtPesos(subtotalItems * (1 + IVA))}</b>
                   </div>
                 )}
               </div>
@@ -420,7 +421,7 @@ export default function CuentasManager({ cuentas, mutuales }) {
       )}
 
       {pagosCuenta && (
-        <div className="modal-bg" onClick={(e) => e.target.className === "modal-bg" && setPagosCuenta(null)}>
+        <div className="modal-bg" onClick={(e) => e.target === e.currentTarget && setPagosCuenta(null)}>
           <div className="modal">
             <h3>Pagos — CC #{pagosCuenta.consecutivo} · {nombreCliente(pagosCuenta)}</h3>
             <div className="resumen-pago">

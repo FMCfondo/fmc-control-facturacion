@@ -137,7 +137,7 @@ export default function Clientes() {
       </div>
 
       {abierto && (
-        <div className="modal-bg" onClick={(e) => e.target.className === "modal-bg" && setAbierto(false)}>
+        <div className="modal-bg" onClick={(e) => e.target === e.currentTarget && setAbierto(false)}>
           <form className="modal" onSubmit={guardar}>
             <h3>{editId ? "Editar mutual" : "Nueva mutual"}</h3>
             <div className="grid2">
