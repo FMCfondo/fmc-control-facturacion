@@ -88,6 +88,13 @@ export default function CuentasManager({ cuentas, mutuales }) {
     const c = lista.find((x) => x.id === id);
     if (!c) return;
     const facturado = Number(c.valor_facturado || 0);
+    const recibido = Number(c.valor_recibido || 0);
+    // Pasar a pendiente/parcial elimina los pagos ya registrados: confirmar si hay dinero recibido.
+    if ((estado === "pendiente" || estado === "parcial") && recibido > 0 &&
+        !confirm(`Esta cuenta tiene ${fmtPesos(recibido)} en pagos registrados que se eliminarán. ¿Continuar?`)) {
+      recargar(); // revierte el desplegable a su valor real
+      return;
+    }
 
     try {
       if (estado === "pendiente") {

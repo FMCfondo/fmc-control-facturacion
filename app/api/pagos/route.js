@@ -29,6 +29,8 @@ export async function POST(request) {
     const b = await request.json();
     if (!b.cuenta_cobro_id || !b.fecha || b.valor == null)
       return NextResponse.json({ error: "Faltan datos del pago (fecha y valor)" }, { status: 400 });
+    if (!Number.isFinite(Number(b.valor)))
+      return NextResponse.json({ error: "El valor del pago no es un número válido" }, { status: 400 });
     const sb = supabaseAdmin();
     const { error } = await sb.from("pagos").insert({
       cuenta_cobro_id: b.cuenta_cobro_id, fecha: b.fecha, valor: Number(b.valor),
