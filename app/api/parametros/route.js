@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../lib/supabase";
 import { requireUser } from "../../../lib/requireUser";
+import { logActividad } from "../../../lib/actividad";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +30,7 @@ export async function PATCH(request) {
     const sb = supabaseAdmin();
     const { error } = await sb.from("parametros").upsert(filas, { onConflict: "clave" });
     if (error) throw error;
+    await logActividad({ tipo: "Parámetros", descripcion: `Parámetros actualizados (${Object.keys(cambios).join(", ")})`, entidad: "parametros", detalle: cambios });
     return NextResponse.json({ ok: true });
   } catch (e) {
     console.error(e); return NextResponse.json({ error: "Error del servidor" }, { status: 500 });
