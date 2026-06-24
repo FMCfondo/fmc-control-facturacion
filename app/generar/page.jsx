@@ -78,6 +78,15 @@ export default function Generar() {
   const total = records ? records.reduce((s, r) => s + r.valorComision, 0) : 0;
   const factFin = records && factIni ? Number(factIni) + records.length - 1 : null;
 
+  // Agrupa las advertencias por categoría (resumen claro cuando hay muchas).
+  const resumenErrs = Object.entries(
+    errs.reduce((acc, e) => {
+      const cat = ((e.split("): ")[1] || e).split(" —")[0].split(":")[0]).trim();
+      acc[cat] = (acc[cat] || 0) + 1;
+      return acc;
+    }, {})
+  ).sort((a, b) => b[1] - a[1]);
+
   async function generarYRegistrar() {
     if (!records || !mutual || !fecha || !cc || !factIni) return;
     setRegistrando(true); setMsg("");
@@ -217,10 +226,18 @@ export default function Generar() {
           <h2>3. Validación — {records.length} registros</h2>
           {errs.length > 0 && (
             <div className="err" style={{ marginBottom: 12 }}>
-              <strong>⚠ {errs.length} advertencia(s):</strong>
-              <ul style={{ margin: "8px 0 0", paddingLeft: 20, maxHeight: 160, overflow: "auto" }}>
-                {errs.slice(0, 60).map((e, i) => <li key={i}>{e}</li>)}
-              </ul>
+              <strong>⚠ {errs.length} advertencia(s)</strong>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, margin: "8px 0 0" }}>
+                {resumenErrs.map(([cat, n]) => (
+                  <span key={cat} style={{ background: "#fee2e2", color: "#991b1b", borderRadius: 999, padding: "2px 10px", fontSize: 12, fontWeight: 600 }}>{cat}: {n}</span>
+                ))}
+              </div>
+              <details style={{ marginTop: 8 }}>
+                <summary style={{ cursor: "pointer", fontSize: 12, color: "#7f1d1d" }}>Ver detalle</summary>
+                <ul style={{ margin: "8px 0 0", paddingLeft: 20, maxHeight: 160, overflow: "auto" }}>
+                  {errs.slice(0, 80).map((e, i) => <li key={i}>{e}</li>)}
+                </ul>
+              </details>
             </div>
           )}
           <div className="resumen">
