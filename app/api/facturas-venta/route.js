@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../lib/supabase";
+import { requireUser } from "../../../lib/requireUser";
 
 export const dynamic = "force-dynamic";
 
 // GET → cuentas de cobro (por cliente/intermediario) con datos para el control de IVA y reserva.
 export async function GET() {
   try {
+    const { response } = await requireUser();
+    if (response) return response;
     const sb = supabaseAdmin();
     const { data, error } = await sb
       .from("cuentas_cobro")
@@ -34,6 +37,6 @@ export async function GET() {
 
     return NextResponse.json({ cuentas, params });
   } catch (e) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    console.error(e); return NextResponse.json({ error: "Error del servidor" }, { status: 500 });
   }
 }

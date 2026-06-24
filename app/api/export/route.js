@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../lib/supabase";
+import { requireUser } from "../../../lib/requireUser";
 
 export const dynamic = "force-dynamic";
 
 // GET → todas las tablas para respaldo/reportes.
 export async function GET() {
   try {
+    const { response } = await requireUser();
+    if (response) return response;
     const sb = supabaseAdmin();
     const [cc, fs, pg, mu, it, cf, pa] = await Promise.all([
       sb.from("cuentas_cobro").select("*").order("consecutivo"),
@@ -26,6 +29,6 @@ export async function GET() {
       parametros: pa.data || [],
     });
   } catch (e) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    console.error(e); return NextResponse.json({ error: "Error del servidor" }, { status: 500 });
   }
 }

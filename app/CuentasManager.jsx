@@ -88,6 +88,13 @@ export default function CuentasManager({ cuentas, mutuales }) {
     const c = lista.find((x) => x.id === id);
     if (!c) return;
     const facturado = Number(c.valor_facturado || 0);
+    const recibido = Number(c.valor_recibido || 0);
+    // Pasar a pendiente/parcial elimina los pagos ya registrados: confirmar si hay dinero recibido.
+    if ((estado === "pendiente" || estado === "parcial") && recibido > 0 &&
+        !confirm(`Esta cuenta tiene ${fmtPesos(recibido)} en pagos registrados que se eliminarán. ¿Continuar?`)) {
+      recargar(); // revierte el desplegable a su valor real
+      return;
+    }
 
     try {
       if (estado === "pendiente") {
@@ -253,6 +260,16 @@ export default function CuentasManager({ cuentas, mutuales }) {
   const flecha = (k) => (orden.campo === k ? (orden.dir === 1 ? " ▲" : " ▼") : "");
   const hayFiltros = Object.values(filtros).some(Boolean) || orden.campo;
 
+  // Encabezado ordenable accesible: clic o teclado (Enter/Espacio) + aria-sort.
+  const ThSort = ({ k, children }) => (
+    <th className="sortable" role="button" tabIndex={0}
+        aria-sort={orden.campo === k ? (orden.dir === 1 ? "ascending" : "descending") : "none"}
+        onClick={() => ordenarPor(k)}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); ordenarPor(k); } }}>
+      {children}{flecha(k)}
+    </th>
+  );
+
   return (
     <>
     <div className="cards">
@@ -274,17 +291,17 @@ export default function CuentasManager({ cuentas, mutuales }) {
         <table>
           <thead>
             <tr>
-              <th className="sortable" onClick={() => ordenarPor("consecutivo")}>CC #{flecha("consecutivo")}</th>
-              <th className="sortable" onClick={() => ordenarPor("tipo")}>Tipo{flecha("tipo")}</th>
-              <th className="sortable" onClick={() => ordenarPor("cliente")}>Cliente / Mutual{flecha("cliente")}</th>
-              <th className="sortable" onClick={() => ordenarPor("mes")}>Mes{flecha("mes")}</th>
-              <th className="sortable" onClick={() => ordenarPor("anio")}>Año{flecha("anio")}</th>
-              <th className="sortable" onClick={() => ordenarPor("fecha")}>Fecha{flecha("fecha")}</th>
-              <th className="sortable" onClick={() => ordenarPor("rango")}>Rango facturas{flecha("rango")}</th>
-              <th className="sortable" onClick={() => ordenarPor("facturado")}>Facturado{flecha("facturado")}</th>
-              <th className="sortable" onClick={() => ordenarPor("recibido")}>Recibido{flecha("recibido")}</th>
-              <th className="sortable" onClick={() => ordenarPor("saldo")}>Saldo{flecha("saldo")}</th>
-              <th className="sortable" onClick={() => ordenarPor("estado")}>Estado{flecha("estado")}</th>
+              <ThSort k="consecutivo">CC #</ThSort>
+              <ThSort k="tipo">Tipo</ThSort>
+              <ThSort k="cliente">Cliente / Mutual</ThSort>
+              <ThSort k="mes">Mes</ThSort>
+              <ThSort k="anio">Año</ThSort>
+              <ThSort k="fecha">Fecha</ThSort>
+              <ThSort k="rango">Rango facturas</ThSort>
+              <ThSort k="facturado">Facturado</ThSort>
+              <ThSort k="recibido">Recibido</ThSort>
+              <ThSort k="saldo">Saldo</ThSort>
+              <ThSort k="estado">Estado</ThSort>
               <th></th>
             </tr>
             <tr className="filtros">
@@ -338,6 +355,11 @@ export default function CuentasManager({ cuentas, mutuales }) {
                 </td>
               </tr>
             ))}
+            {filtradas.length === 0 && (
+              <tr><td colSpan={12} style={{ textAlign: "center", color: "var(--gris)", padding: 20 }}>
+                {lista.length === 0 ? "Aún no hay cuentas de cobro." : "Ninguna cuenta coincide con el filtro."}
+              </td></tr>
+            )}
           </tbody>
         </table>
       </div>
@@ -477,9 +499,6 @@ export default function CuentasManager({ cuentas, mutuales }) {
         .estado-sel.pago{background:#dcfce7;color:#166534;border-color:#86efac}
         .estado-sel.pendiente{background:#fef9c3;color:#854d0e;border-color:#fde68a}
         .estado-sel.parcial{background:#dbeafe;color:#1e40af;border-color:#93c5fd}
-        .modal-bg{position:fixed;inset:0;background:rgba(10,22,40,.5);display:flex;align-items:center;justify-content:center;padding:16px;z-index:50}
-        .modal{background:#fff;border-radius:12px;padding:24px;width:100%;max-width:620px;max-height:90vh;overflow:auto}
-        .modal h3{margin-bottom:16px;color:#0a1628}
         .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
         .items-edit{margin-top:16px;border-top:1px solid #e2e8f0;padding-top:12px}
         .items-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}

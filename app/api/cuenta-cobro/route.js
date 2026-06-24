@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../lib/supabase";
 import { logActividad } from "../../../lib/actividad";
+import { requireUser } from "../../../lib/requireUser";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +23,8 @@ function limpiar(body) {
 // Lista todas las cuentas de cobro (para refrescar la tabla tras un cambio).
 export async function GET() {
   try {
+    const { response } = await requireUser();
+    if (response) return response;
     const sb = supabaseAdmin();
     const { data, error } = await sb.from("cuentas_cobro").select("*")
       .order("anio", { ascending: false })
@@ -30,13 +33,15 @@ export async function GET() {
     if (error) throw error;
     return NextResponse.json({ cuentas: data });
   } catch (e) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    console.error(e); return NextResponse.json({ error: "Error del servidor" }, { status: 500 });
   }
 }
 
 // Crear una cuenta de cobro manual.
 export async function POST(request) {
   try {
+    const { response } = await requireUser();
+    if (response) return response;
     const body = await request.json();
     const datos = limpiar(body);
     datos.origen = "manual";
@@ -50,7 +55,7 @@ export async function POST(request) {
     await logActividad({ tipo: "Cuenta creada", descripcion: `Cuenta de cobro #${datos.consecutivo} creada manualmente`, entidad: "cuenta_cobro", entidad_id: datos.consecutivo });
     return NextResponse.json({ ok: true, id: data.id });
   } catch (e) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    console.error(e); return NextResponse.json({ error: "Error del servidor" }, { status: 500 });
   }
 }
 
@@ -76,6 +81,8 @@ async function guardarItems(sb, cuentaId, items) {
 // Editar una cuenta de cobro existente.
 export async function PATCH(request) {
   try {
+    const { response } = await requireUser();
+    if (response) return response;
     const body = await request.json();
     if (!body.id) return NextResponse.json({ error: "Falta el id" }, { status: 400 });
     const datos = limpiar(body);
@@ -87,13 +94,15 @@ export async function PATCH(request) {
     await logActividad({ tipo: "Cuenta modificada", descripcion: `Cuenta de cobro modificada (campos: ${campos})`, entidad: "cuenta_cobro", entidad_id: body.id, detalle: datos });
     return NextResponse.json({ ok: true });
   } catch (e) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    console.error(e); return NextResponse.json({ error: "Error del servidor" }, { status: 500 });
   }
 }
 
 // Borrar una cuenta de cobro (y sus facturas por cascade).
 export async function DELETE(request) {
   try {
+    const { response } = await requireUser();
+    if (response) return response;
     const { id } = await request.json();
     if (!id) return NextResponse.json({ error: "Falta el id" }, { status: 400 });
     const sb = supabaseAdmin();
@@ -102,6 +111,6 @@ export async function DELETE(request) {
     await logActividad({ tipo: "Cuenta eliminada", descripcion: "Cuenta de cobro eliminada", entidad: "cuenta_cobro", entidad_id: id });
     return NextResponse.json({ ok: true });
   } catch (e) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    console.error(e); return NextResponse.json({ error: "Error del servidor" }, { status: 500 });
   }
 }

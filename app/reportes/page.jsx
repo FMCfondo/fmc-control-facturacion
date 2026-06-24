@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import * as XLSX from "xlsx-js-style";
+// xlsx-js-style se carga bajo demanda (import dinámico) para no inflar el bundle inicial.
 
 const HOY = () => new Date().toISOString().slice(0, 10);
 const fmtF = (d) => (d ? new Date(String(d).slice(0, 10) + "T12:00:00").toLocaleDateString("es-CO") : "");
@@ -38,18 +38,19 @@ export default function Reportes() {
     fetch("/api/actividad", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tipo: "Descarga", descripcion }) }).catch(() => {});
 
   // Construye una hoja desde un arreglo de objetos.
-  const hoja = (arr) => XLSX.utils.json_to_sheet(arr.length ? arr : [{ vacio: "sin datos" }]);
+  const hoja = (XLSX, arr) => XLSX.utils.json_to_sheet(arr.length ? arr : [{ vacio: "sin datos" }]);
 
   async function respaldoCompleto() {
     setCargando("full"); setMsg("");
     try {
+      const XLSX = (await import("xlsx-js-style")).default;
       const d = await traer();
       const wb = XLSX.utils.book_new();
       const hojas = {
         "Cuentas de cobro": d.cuentas_cobro, "Facturas": d.facturas_siigo, "Pagos": d.pagos,
         "Mutuales": d.mutuales, "Items": d.items_cuenta_cobro, "Config": d.config, "Parametros": d.parametros,
       };
-      Object.entries(hojas).forEach(([n, arr]) => XLSX.utils.book_append_sheet(wb, hoja(arr || []), n.slice(0, 31)));
+      Object.entries(hojas).forEach(([n, arr]) => XLSX.utils.book_append_sheet(wb, hoja(XLSX, arr || []), n.slice(0, 31)));
       XLSX.writeFile(wb, `Respaldo FMC - ${HOY()}.xlsx`);
       logDescarga("Respaldo completo descargado");
     } catch (e) { setMsg("✗ " + e.message); }
@@ -59,9 +60,10 @@ export default function Reportes() {
   async function tabla(clave, nombre) {
     setCargando(clave); setMsg("");
     try {
+      const XLSX = (await import("xlsx-js-style")).default;
       const d = await traer();
       const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, hoja(d[clave] || []), nombre.slice(0, 31));
+      XLSX.utils.book_append_sheet(wb, hoja(XLSX, d[clave] || []), nombre.slice(0, 31));
       XLSX.writeFile(wb, `${nombre} - ${HOY()}.xlsx`);
       logDescarga(`Reporte "${nombre}" descargado`);
     } catch (e) { setMsg("✗ " + e.message); }

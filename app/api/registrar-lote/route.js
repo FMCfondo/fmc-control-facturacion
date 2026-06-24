@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../lib/supabase";
 import { logActividad } from "../../../lib/actividad";
+import { requireUser } from "../../../lib/requireUser";
 
 // Columnas que se permiten insertar (evita mass assignment desde el cliente).
 const CAMPOS_CUENTA = [
@@ -16,6 +17,8 @@ const pick = (obj, campos) => { const o = {}; for (const k of campos) if (obj?.[
 // Body: { cuenta: {...}, facturas: [...] }
 export async function POST(request) {
   try {
+    const { response } = await requireUser();
+    if (response) return response;
     const { cuenta, facturas } = await request.json();
     if (!cuenta || !cuenta.consecutivo) {
       return NextResponse.json({ error: "Faltan datos de la cuenta de cobro" }, { status: 400 });
@@ -54,6 +57,6 @@ export async function POST(request) {
     });
     return NextResponse.json({ ok: true, cuenta_cobro_id: cc.id });
   } catch (e) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    console.error(e); return NextResponse.json({ error: "Error del servidor" }, { status: 500 });
   }
 }

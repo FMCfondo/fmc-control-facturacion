@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../lib/supabase";
+import { requireUser } from "../../../lib/requireUser";
 
 export const dynamic = "force-dynamic";
 
@@ -12,17 +13,21 @@ const limpiar = (b) => {
 
 export async function GET() {
   try {
+    const { response } = await requireUser();
+    if (response) return response;
     const sb = supabaseAdmin();
     const { data, error } = await sb.from("mutuales").select("*").order("nombre");
     if (error) throw error;
     return NextResponse.json({ mutuales: data });
   } catch (e) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    console.error(e); return NextResponse.json({ error: "Error del servidor" }, { status: 500 });
   }
 }
 
 export async function POST(request) {
   try {
+    const { response } = await requireUser();
+    if (response) return response;
     const b = await request.json();
     const datos = limpiar(b);
     if (!datos.nombre) return NextResponse.json({ error: "Falta el nombre" }, { status: 400 });
@@ -32,12 +37,14 @@ export async function POST(request) {
     if (error) throw error;
     return NextResponse.json({ ok: true, id: data.id });
   } catch (e) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    console.error(e); return NextResponse.json({ error: "Error del servidor" }, { status: 500 });
   }
 }
 
 export async function PATCH(request) {
   try {
+    const { response } = await requireUser();
+    if (response) return response;
     const b = await request.json();
     if (!b.id) return NextResponse.json({ error: "Falta el id" }, { status: 400 });
     const sb = supabaseAdmin();
@@ -45,6 +52,6 @@ export async function PATCH(request) {
     if (error) throw error;
     return NextResponse.json({ ok: true });
   } catch (e) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    console.error(e); return NextResponse.json({ error: "Error del servidor" }, { status: 500 });
   }
 }

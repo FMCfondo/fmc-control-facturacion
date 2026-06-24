@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin, proximoConsecutivoCC, proximaFacturaSiigo } from "../../../lib/supabase";
+import { requireUser } from "../../../lib/requireUser";
 
 // GET → { proximoCC, proximaFactura, mutuales[] }
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
+    const { response } = await requireUser();
+    if (response) return response;
     const sb = supabaseAdmin();
     const [cc, fac, mut] = await Promise.all([
       proximoConsecutivoCC(sb),
@@ -15,6 +18,6 @@ export async function GET() {
     if (mut.error) throw mut.error;
     return NextResponse.json({ proximoCC: cc, proximaFactura: fac, mutuales: mut.data });
   } catch (e) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    console.error(e); return NextResponse.json({ error: "Error del servidor" }, { status: 500 });
   }
 }

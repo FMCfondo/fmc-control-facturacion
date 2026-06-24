@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../lib/supabase";
+import { requireUser } from "../../../lib/requireUser";
 
 export const dynamic = "force-dynamic";
 
 // GET ?id=<cuenta_cobro_id> → { cuenta, mutual, items } para armar la cuenta de cobro.
 export async function GET(request) {
   try {
+    const { response } = await requireUser();
+    if (response) return response;
     const id = new URL(request.url).searchParams.get("id");
     if (!id) return NextResponse.json({ error: "Falta id" }, { status: 400 });
     const sb = supabaseAdmin();
@@ -25,6 +28,6 @@ export async function GET(request) {
 
     return NextResponse.json({ cuenta, mutual, items: items || [], facturas: facturas || [], fondo });
   } catch (e) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    console.error(e); return NextResponse.json({ error: "Error del servidor" }, { status: 500 });
   }
 }
