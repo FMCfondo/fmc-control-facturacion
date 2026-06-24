@@ -10,6 +10,8 @@ export const dynamic = "force-dynamic";
 const MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 const pesos = (v) => "$" + Math.round(Number(v) || 0).toLocaleString("es-CO");
 const lista = (s) => String(s || "").split(/[,;]/).map((x) => x.trim()).filter(Boolean);
+// Escapa texto que se interpola dentro del HTML del correo (evita inyección de HTML).
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
 function plantilla({ origin, nombre, cc, periodo, total, mensaje, fondo }) {
   const logo = `${origin}/FMC-LOGO.jpeg`;
@@ -29,12 +31,12 @@ function plantilla({ origin, nombre, cc, periodo, total, mensaje, fondo }) {
           </tr></table>
         </td></tr>
         <tr><td style="padding:28px">
-          <p style="font-size:15px;margin:0 0 12px">Estimados señores <strong>${nombre}</strong>,</p>
+          <p style="font-size:15px;margin:0 0 12px">Estimados señores <strong>${esc(nombre)}</strong>,</p>
           <p style="font-size:14px;line-height:1.6;margin:0 0 16px">Adjunto encontrarán la <strong>cuenta de cobro N° ${cc}</strong>, correspondiente a las <strong>garantías del mes de ${periodo}</strong>, junto con la relación de facturas generadas.</p>
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6fa;border-radius:10px;margin:8px 0 18px"><tr><td style="padding:14px 18px">
             <span style="font-size:12px;color:#6b7585">Valor total</span><br><span style="font-size:22px;font-weight:bold;color:#102558">${total}</span>
           </td></tr></table>
-          ${mensaje ? `<p style="font-size:14px;line-height:1.6;margin:0 0 16px;color:#3a4358">${mensaje}</p>` : ""}
+          ${mensaje ? `<p style="font-size:14px;line-height:1.6;margin:0 0 16px;color:#3a4358">${esc(mensaje).replace(/\n/g, "<br>")}</p>` : ""}
           <p style="font-size:14px;line-height:1.6;margin:0 0 14px">Quedamos atentos a cualquier inquietud.<br>Cordialmente,</p>
           ${fondo.firma ? `<div style="font-size:13px;color:#3a4358;line-height:1.5">${fondo.firma}</div>` : `<p style="font-size:14px;font-weight:bold;margin:0;color:#102558">${fondo.nombre}</p>`}
         </td></tr>

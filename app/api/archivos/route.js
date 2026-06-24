@@ -13,14 +13,16 @@ export async function GET(request) {
     const sb = supabaseAdmin();
 
     if (cc) {
-      const { data: files, error } = await sb.storage.from(BUCKET).list(`lotes/${cc}`);
+      const ccNum = Number(cc);
+      if (!Number.isInteger(ccNum) || ccNum <= 0) return NextResponse.json({ error: "cc inválido" }, { status: 400 });
+      const { data: files, error } = await sb.storage.from(BUCKET).list(`lotes/${ccNum}`);
       if (error) throw error;
       const archivos = [];
       for (const f of files || []) {
-        const { data } = await sb.storage.from(BUCKET).createSignedUrl(`lotes/${cc}/${f.name}`, 600);
+        const { data } = await sb.storage.from(BUCKET).createSignedUrl(`lotes/${ccNum}/${f.name}`, 600);
         if (data?.signedUrl) archivos.push({ name: f.name, url: data.signedUrl });
       }
-      await logActividad({ tipo: "Descarga", descripcion: `Descarga de archivos SIIGO del lote #${cc}`, entidad: "cuenta_cobro", entidad_id: cc });
+      await logActividad({ tipo: "Descarga", descripcion: `Descarga de archivos SIIGO del lote #${ccNum}`, entidad: "cuenta_cobro", entidad_id: ccNum });
       return NextResponse.json({ archivos });
     }
 
