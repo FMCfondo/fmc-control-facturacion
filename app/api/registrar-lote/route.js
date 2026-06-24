@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../lib/supabase";
-import { logActividad } from "../../../lib/actividad";
+import { logActividad, resumenCuenta, fmtPesosLog } from "../../../lib/actividad";
 import { requireUser } from "../../../lib/requireUser";
 
 // Columnas que se permiten insertar (evita mass assignment desde el cliente).
@@ -49,11 +49,12 @@ export async function POST(request) {
         throw e2;
       }
     }
+    const r = await resumenCuenta(sb, cc.id);
     await logActividad({
       tipo: "Lote generado",
-      descripcion: `Cuenta de cobro #${cuenta.consecutivo} generada con ${facturas?.length || 0} factura(s)`,
+      descripcion: `Cuenta de cobro #${cuenta.consecutivo} generada — ${r?.cliente || "—"} · ${facturas?.length || 0} factura(s) · ${fmtPesosLog(r?.valor ?? cuenta.valor_facturado)}`,
       entidad: "cuenta_cobro", entidad_id: cuenta.consecutivo,
-      detalle: { facturas: facturas?.length || 0, valor: cuenta.valor_facturado },
+      detalle: { cliente: r?.cliente, facturas: facturas?.length || 0, valor: cuenta.valor_facturado, mes: r?.mes, anio: r?.anio, rango: `${datosCuenta.factura_inicial}–${datosCuenta.factura_final}` },
     });
     return NextResponse.json({ ok: true, cuenta_cobro_id: cc.id });
   } catch (e) {
