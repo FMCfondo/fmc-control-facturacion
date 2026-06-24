@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { leerExcel, leerHoja, procesarFilas, procesarTexto } from "../../lib/siigo/procesar";
 import { generarArchivosSiigo, descargar, aBase64 } from "../../lib/siigo/generar";
 import { desglosarComision, round2, round6 } from "../../lib/siigo/utils";
+import { IVA } from "../../lib/siigo/constantes";
 import { fmtPesos } from "../../lib/format";
 
 const MESES_ABBR = ["ENE","FEB","MAR","ABR","MAY","JUN","JUL","AGO","SEP","OCT","NOV","DIC"];
@@ -118,7 +119,7 @@ export default function Generar() {
       const facturas = records.map((r, i) => ({
         consecutivo: Number(factIni) + i, cedula: r.id, nombre: r.nombre, email: r.email,
         telefono: r.tel, ciudad_depto: r.ciudadDepto, cod_ciudad: r.geo.cod_ciudad,
-        valor_comision: round2(r.valorComision), valor_base: round6(r.valorComision / 1.19),
+        valor_comision: round2(r.valorComision), valor_base: round6(r.valorComision / (1 + IVA)),
       }));
 
       const res = await fetch("/api/registrar-lote", {
@@ -224,7 +225,7 @@ export default function Generar() {
           )}
           <div className="resumen">
             <span><b>Total (IVA inc.):</b> {fmtPesos(total)}</span>
-            <span><b>Antes de IVA:</b> {fmtPesos(total / 1.19)}</span>
+            <span><b>Antes de IVA:</b> {fmtPesos(total / (1 + IVA))}</span>
             <span><b>Facturas:</b> #{factIni} – #{factFin}</span>
           </div>
           <div className="tbl-wrap" style={{ maxHeight: 320, marginTop: 12 }}>

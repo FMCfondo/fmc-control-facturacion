@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { FONDO } from "../../../lib/siigo/constantes";
 import { fmtPesos, fmtFecha } from "../../../lib/format";
+import { calcularTotalesCuenta } from "../../../lib/cuenta";
 
 const MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 
@@ -63,21 +64,16 @@ export default function CuentaCobroDoc() {
     : { nombre: cuenta.cliente_nombre, nit: cuenta.cliente_nit, dir: cuenta.cliente_direccion, tel: "", email: cuenta.cliente_correo };
 
   // Líneas e importes
-  let lineas, subtotal;
+  const { subtotal, iva, anticipos, total } = calcularTotalesCuenta(cuenta, items);
+  let lineas;
   if (items && items.length) {
     lineas = items.map((it) => ({ q: it.cantidad, codigo: it.codigo, desc: it.descripcion, unit: Number(it.valor_unitario), sub: Number(it.subtotal) }));
-    subtotal = items.reduce((s, it) => s + Number(it.subtotal || 0), 0);
   } else {
-    const base = (Number(cuenta.valor_facturado) || 0) / 1.19;
     const desc = mutual
       ? `SERVICIO DE COBERTURA DE CRÉDITOS${cuenta.mes ? ` (${MESES[cuenta.mes - 1]} ${cuenta.anio})` : ""}`
       : (cuenta.notas || "Cuenta de cobro");
-    lineas = [{ q: 1, codigo: mutual ? "FMC01" : "", desc, unit: base, sub: base }];
-    subtotal = base;
+    lineas = [{ q: 1, codigo: mutual ? "FMC01" : "", desc, unit: subtotal, sub: subtotal }];
   }
-  const iva = subtotal * 0.19;
-  const anticipos = Math.abs(Number(cuenta.anticipos) || 0);
-  const total = subtotal + iva - anticipos;
 
   return (
     <div className="doc-wrap">
@@ -196,7 +192,7 @@ export default function CuentaCobroDoc() {
       </div>{/* #documento */}
 
       {envioAbierto && (
-        <div className="no-print modal-bg" onClick={(e) => e.target.className.includes("modal-bg") && setEnvioAbierto(false)}>
+        <div className="no-print modal-bg" onClick={(e) => e.target === e.currentTarget && setEnvioAbierto(false)}>
           <div className="modal-env">
             <h3>Enviar cuenta de cobro N° {cuenta.consecutivo}</h3>
             <label>Para (separa con coma)
