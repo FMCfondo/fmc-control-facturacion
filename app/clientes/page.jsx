@@ -169,9 +169,6 @@ export default function Clientes() {
         .grid-f label,.grid2 label{display:flex;flex-direction:column;font-size:12px;font-weight:600;color:#334155;gap:5px}
         .grid-f input,.grid2 input{padding:8px 10px;border:1px solid #cbd5e1;border-radius:7px;font-size:13px;font-weight:400}
         .mini{background:#eff6ff;color:#1e40af;border:1px solid #93c5fd;border-radius:6px;padding:3px 10px;font-size:11px;font-weight:600;cursor:pointer}
-        .modal-bg{position:fixed;inset:0;background:rgba(10,22,40,.5);display:flex;align-items:center;justify-content:center;padding:16px;z-index:50}
-        .modal{background:#fff;border-radius:12px;padding:24px;width:100%;max-width:620px;max-height:90vh;overflow:auto}
-        .modal h3{margin-bottom:16px;color:#0a1628}
         .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
         .chk{flex-direction:row !important;align-items:center;gap:8px}
         .modal-acc{display:flex;align-items:center;gap:8px;margin-top:18px}

@@ -355,6 +355,11 @@ export default function CuentasManager({ cuentas, mutuales }) {
                 </td>
               </tr>
             ))}
+            {filtradas.length === 0 && (
+              <tr><td colSpan={12} style={{ textAlign: "center", color: "var(--gris)", padding: 20 }}>
+                {lista.length === 0 ? "Aún no hay cuentas de cobro." : "Ninguna cuenta coincide con el filtro."}
+              </td></tr>
+            )}
           </tbody>
         </table>
       </div>
@@ -494,9 +499,6 @@ export default function CuentasManager({ cuentas, mutuales }) {
         .estado-sel.pago{background:#dcfce7;color:#166534;border-color:#86efac}
         .estado-sel.pendiente{background:#fef9c3;color:#854d0e;border-color:#fde68a}
         .estado-sel.parcial{background:#dbeafe;color:#1e40af;border-color:#93c5fd}
-        .modal-bg{position:fixed;inset:0;background:rgba(10,22,40,.5);display:flex;align-items:center;justify-content:center;padding:16px;z-index:50}
-        .modal{background:#fff;border-radius:12px;padding:24px;width:100%;max-width:620px;max-height:90vh;overflow:auto}
-        .modal h3{margin-bottom:16px;color:#0a1628}
         .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
         .items-edit{margin-top:16px;border-top:1px solid #e2e8f0;padding-top:12px}
         .items-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
