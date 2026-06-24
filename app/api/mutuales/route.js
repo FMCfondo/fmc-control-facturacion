@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../lib/supabase";
 import { requireUser } from "../../../lib/requireUser";
+import { logActividad } from "../../../lib/actividad";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +36,7 @@ export async function POST(request) {
     const sb = supabaseAdmin();
     const { data, error } = await sb.from("mutuales").insert(datos).select("id").single();
     if (error) throw error;
+    await logActividad({ tipo: "Mutual creada", descripcion: `Mutual "${datos.nombre}" creada`, entidad: "mutual", entidad_id: data.id, detalle: datos });
     return NextResponse.json({ ok: true, id: data.id });
   } catch (e) {
     console.error(e); return NextResponse.json({ error: "Error del servidor" }, { status: 500 });
@@ -47,9 +49,11 @@ export async function PATCH(request) {
     if (response) return response;
     const b = await request.json();
     if (!b.id) return NextResponse.json({ error: "Falta el id" }, { status: 400 });
+    const datos = limpiar(b);
     const sb = supabaseAdmin();
-    const { error } = await sb.from("mutuales").update(limpiar(b)).eq("id", b.id);
+    const { error } = await sb.from("mutuales").update(datos).eq("id", b.id);
     if (error) throw error;
+    await logActividad({ tipo: "Mutual modificada", descripcion: `Mutual modificada (campos: ${Object.keys(datos).join(", ")})`, entidad: "mutual", entidad_id: b.id, detalle: datos });
     return NextResponse.json({ ok: true });
   } catch (e) {
     console.error(e); return NextResponse.json({ error: "Error del servidor" }, { status: 500 });

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 const COLOR = {
   "Lote generado": "#1a3a8f", "Cuenta creada": "#0e7490", "Cuenta modificada": "#b45309",
   "Cuenta eliminada": "#dc2626", "Pago registrado": "#166534", "Correo enviado": "#7e22ce", "Descarga": "#475569",
+  "Mutual creada": "#0891b2", "Mutual modificada": "#a16207", "Config actualizada": "#7c3aed", "Parámetros": "#0f766e",
 };
 const fmt = (d) => new Date(d).toLocaleString("es-CO", { dateStyle: "short", timeStyle: "short" });
 
@@ -25,7 +26,7 @@ export default function Actividad() {
   const tipos = useMemo(() => [...new Set(items.map((i) => i.tipo))], [items]);
   const filtrados = items.filter((i) =>
     (!fTipo || i.tipo === fTipo) &&
-    (!q || (i.descripcion || "").toLowerCase().includes(q.toLowerCase()))
+    (!q || `${i.descripcion || ""} ${i.usuario || ""}`.toLowerCase().includes(q.toLowerCase()))
   );
 
   return (
@@ -45,7 +46,7 @@ export default function Actividad() {
           </select>
         </label>
         <label className="fld" style={{ flex: 1, minWidth: 200 }}>Buscar
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="🔍 descripción…" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="🔍 descripción o usuario…" />
         </label>
       </div>
 
@@ -53,17 +54,18 @@ export default function Actividad() {
         <h2>Eventos ({filtrados.length})</h2>
         <div className="tbl-wrap">
           <table>
-            <thead><tr><th>Fecha y hora</th><th>Tipo</th><th>Descripción</th></tr></thead>
+            <thead><tr><th>Fecha y hora</th><th>Usuario</th><th>Tipo</th><th>Descripción</th></tr></thead>
             <tbody>
               {filtrados.map((i) => (
                 <tr key={i.id}>
                   <td style={{ whiteSpace: "nowrap" }}>{fmt(i.creado_en)}</td>
+                  <td style={{ whiteSpace: "nowrap", color: "var(--gris-osc)" }}>{i.usuario || "—"}</td>
                   <td><span style={{ background: (COLOR[i.tipo] || "#475569") + "22", color: COLOR[i.tipo] || "#475569", padding: "3px 9px", borderRadius: 999, fontSize: 11, fontWeight: 700 }}>{i.tipo}</span></td>
-                  <td style={{ whiteSpace: "normal" }}>{i.descripcion}</td>
+                  <td style={{ whiteSpace: "normal" }} title={i.detalle ? JSON.stringify(i.detalle) : undefined}>{i.descripcion}</td>
                 </tr>
               ))}
-              {cargando && <tr><td colSpan={3} style={{ textAlign: "center", color: "#64748b", padding: 24 }}>Cargando…</td></tr>}
-              {!cargando && filtrados.length === 0 && <tr><td colSpan={3} style={{ color: "#64748b" }}>Sin eventos todavía.</td></tr>}
+              {cargando && <tr><td colSpan={4} style={{ textAlign: "center", color: "#64748b", padding: 24 }}>Cargando…</td></tr>}
+              {!cargando && filtrados.length === 0 && <tr><td colSpan={4} style={{ color: "#64748b" }}>Sin eventos todavía.</td></tr>}
             </tbody>
           </table>
         </div>
