@@ -305,22 +305,22 @@ export default function CuentasManager({ cuentas, mutuales }) {
               <th></th>
             </tr>
             <tr className="filtros">
-              <th><input value={filtros.consecutivo || ""} onChange={(e) => setF("consecutivo", e.target.value)} placeholder="🔍" /></th>
+              <th><input aria-label="Filtrar por consecutivo" value={filtros.consecutivo || ""} onChange={(e) => setF("consecutivo", e.target.value)} placeholder="🔍" /></th>
               <th>
-                <select value={filtros.tipo || ""} onChange={(e) => setF("tipo", e.target.value)}>
+                <select aria-label="Filtrar por tipo" value={filtros.tipo || ""} onChange={(e) => setF("tipo", e.target.value)}>
                   <option value="">Todos</option><option value="regular">regular</option><option value="irregular">irregular</option>
                 </select>
               </th>
-              <th><input value={filtros.cliente || ""} onChange={(e) => setF("cliente", e.target.value)} placeholder="🔍" /></th>
-              <th><input value={filtros.mes || ""} onChange={(e) => setF("mes", e.target.value)} placeholder="🔍" /></th>
-              <th><input value={filtros.anio || ""} onChange={(e) => setF("anio", e.target.value)} placeholder="🔍" /></th>
-              <th><input value={filtros.fecha || ""} onChange={(e) => setF("fecha", e.target.value)} placeholder="dd/mm/aaaa" /></th>
-              <th><input value={filtros.rango || ""} onChange={(e) => setF("rango", e.target.value)} placeholder="🔍" /></th>
-              <th><input value={filtros.facturado || ""} onChange={(e) => setF("facturado", e.target.value)} placeholder="🔍" /></th>
-              <th><input value={filtros.recibido || ""} onChange={(e) => setF("recibido", e.target.value)} placeholder="🔍" /></th>
-              <th><input value={filtros.saldo || ""} onChange={(e) => setF("saldo", e.target.value)} placeholder="🔍" /></th>
+              <th><input aria-label="Filtrar por cliente o mutual" value={filtros.cliente || ""} onChange={(e) => setF("cliente", e.target.value)} placeholder="🔍" /></th>
+              <th><input aria-label="Filtrar por mes" value={filtros.mes || ""} onChange={(e) => setF("mes", e.target.value)} placeholder="🔍" /></th>
+              <th><input aria-label="Filtrar por año" value={filtros.anio || ""} onChange={(e) => setF("anio", e.target.value)} placeholder="🔍" /></th>
+              <th><input aria-label="Filtrar por fecha" value={filtros.fecha || ""} onChange={(e) => setF("fecha", e.target.value)} placeholder="dd/mm/aaaa" /></th>
+              <th><input aria-label="Filtrar por rango de facturas" value={filtros.rango || ""} onChange={(e) => setF("rango", e.target.value)} placeholder="🔍" /></th>
+              <th><input aria-label="Filtrar por valor facturado" value={filtros.facturado || ""} onChange={(e) => setF("facturado", e.target.value)} placeholder="🔍" /></th>
+              <th><input aria-label="Filtrar por valor recibido" value={filtros.recibido || ""} onChange={(e) => setF("recibido", e.target.value)} placeholder="🔍" /></th>
+              <th><input aria-label="Filtrar por saldo" value={filtros.saldo || ""} onChange={(e) => setF("saldo", e.target.value)} placeholder="🔍" /></th>
               <th>
-                <select value={filtros.estado || ""} onChange={(e) => setF("estado", e.target.value)}>
+                <select aria-label="Filtrar por estado" value={filtros.estado || ""} onChange={(e) => setF("estado", e.target.value)}>
                   <option value="">Todos</option><option value="pendiente">pendiente</option><option value="parcial">parcial</option><option value="pago">pago</option>
                 </select>
               </th>
