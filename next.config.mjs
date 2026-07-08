@@ -26,6 +26,8 @@ const securityHeaders = [
   { key: "Strict-Transport-Security", value: "max-age=31536000" },
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
   { key: "Content-Security-Policy", value: csp },
+  // Portal privado: que los buscadores no indexen ninguna página (incluido /login).
+  { key: "X-Robots-Tag", value: "noindex, nofollow" },
 ];
 
 const nextConfig = {
