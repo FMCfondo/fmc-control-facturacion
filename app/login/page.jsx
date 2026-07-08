@@ -46,7 +46,7 @@ export default function Login() {
   return (
     <div className="login-wrap">
       {!pedirMfa ? (
-        <form className="login-card" onSubmit={entrar}>
+        <form className="login-card" method="post" onSubmit={entrar}>
           <div className="logo-box"><img src="/FMC-LOGO.jpeg" alt="FMC" onError={(e) => { e.target.style.display = "none"; }} /></div>
           <h1>Control de Facturación</h1>
           <p className="sub">Fondo Mutuo de Cobertura S.A.S</p>
@@ -60,7 +60,7 @@ export default function Login() {
           <button className="btn-login" disabled={cargando}>{cargando ? "Ingresando…" : "Ingresar"}</button>
         </form>
       ) : (
-        <form className="login-card" onSubmit={verificarMfa}>
+        <form className="login-card" method="post" onSubmit={verificarMfa}>
           <div className="logo-box"><img src="/FMC-LOGO.jpeg" alt="FMC" onError={(e) => { e.target.style.display = "none"; }} /></div>
           <h1>Verificación en 2 pasos</h1>
           <p className="sub">Ingresa el código de tu app autenticadora</p>
