@@ -1,79 +1,57 @@
-# FMC — Sistema de Control de Facturación
+# FMC — Control de Facturación
 
-App interna (Next.js + Supabase) que reemplaza el libro `Control de facturas.xlsx`.
-Ver el diseño completo en `../DISEÑO_SISTEMA_CONTROL_FACTURAS.md`.
+App interna (**Next.js 14 App Router + Supabase + Vercel**) que reemplaza el Excel
+`Control de facturas.xlsx`. **En producción** en `facturacion.fondomutuodecobertura.com`.
+Uso de un solo operador.
 
-## Estado: Fase 1 (base de datos + migración) — artefactos listos
+Genera los 3 archivos SIIGO desde las plantillas de las mutuales, controla cuentas de cobro
+y pagos, calcula IVA/reserva por cuatrimestre, emite la cuenta de cobro en PDF y la envía por
+correo, y guarda respaldos.
+
+> **Documentación completa (fuera del repo):** `../GUIA_DEL_SISTEMA.md` (cómo funciona,
+> reglas de negocio, troubleshooting) y `../Review.md` (estado, seguridad, auditoría,
+> pendientes). Léelos para el contexto completo.
+
+## Stack
+
+- Next.js 14 (App Router), React
+- Supabase: Postgres + Auth (2FA TOTP) + Storage
+- Vercel (hosting; despliega desde `main`)
+- Gmail SMTP (nodemailer) · jsPDF (PDF en el servidor)
+
+## Estructura (dentro de `app/`, que es la raíz del repo)
 
 ```
-db/
-  schema.sql                  Esquema completo (tablas, RLS, triggers, funciones)
-  seed_mutuales.sql           Datos de las mutuales (generado del Excel)
-  migracion_historico.sql     233 cuentas de cobro históricas (generado del Excel)
-scripts/
-  migrar_historico.py         Regenera los dos .sql desde el Excel
-app/
-  lib/siigo/utils.js          Lógica portada del HTML (validada con tests)
-  lib/supabase.js             Clientes Supabase + helpers de consecutivos
-  package.json, .env.example, .gitignore
+middleware.js         auth: login + 2FA (aal2) + allowlist de correo
+next.config.mjs       cabeceras de seguridad + CSP
+lib/                  supabase (service role), requireUser, actividad, pdf, format, siigo/*
+app/                  Shell + Sidebar (navegación lateral) + páginas + api/*
 ```
 
-## Pasos para montar la Fase 1
+Páginas: tablero, generar, facturas-venta, reportes, actividad, clientes, cuenta/[id],
+login, seguridad. Cada ruta `/api` valida la sesión con `requireUser()`.
 
-### 1. Crear el proyecto en Supabase
-- Crea un proyecto nuevo en supabase.com.
-- En **SQL Editor**, pega y ejecuta en orden:
-  1. `db/schema.sql`
-  2. `db/seed_mutuales.sql`
-  3. `db/migracion_historico.sql`
-- Verifica: `select count(*) from cuentas_cobro;` debe dar ~233.
-- Prueba los consecutivos: `select proximo_consecutivo_cc();` y `select proxima_factura_siigo();`.
+## Correr en local
 
-### 2. Configurar la app
 ```bash
-cd app
 npm install
-cp .env.example .env.local   # y completa las claves de Supabase (Settings → API)
+cp .env.example .env.local   # completar claves (Supabase → Settings → API, y Gmail)
 npm run dev
 ```
 
-### 3. Desplegar a GitHub + Vercel (el tablero ya está listo)
-**a) Subir a GitHub** (desde la carpeta `app/`):
-```bash
-cd app
-git init
-git add .
-git commit -m "Tablero de control de facturación FMC"
-# crea un repo vacío en github.com (ej. fmc-control-facturacion) y luego:
-git remote add origin https://github.com/TU-USUARIO/fmc-control-facturacion.git
-git branch -M main
-git push -u origin main
-```
-**b) Conectar Vercel:**
-- En vercel.com → **Add New → Project** → importa el repo de GitHub.
-- En **Environment Variables** agrega las 3 de `.env.example`
-  (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`).
-- **Deploy**. Cada push a `main` redepliega automáticamente.
+## Variables de entorno (en Vercel)
 
-> El tablero (`app/page.jsx`) lee `cuentas_cobro` y `mutuales` en el servidor con la service role
-> key (segura, no llega al navegador). Si ves un error de conexión, revisa las variables y que los
-> SQL ya estén ejecutados. La autenticación con login (Supabase Auth) se agrega en un paso posterior
-> antes del uso real.
+`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`,
+`GMAIL_USER`, `GMAIL_APP_PASSWORD`, `ALLOWED_EMAILS`. Las `NEXT_PUBLIC_*` se incrustan en el
+build → al cambiarlas, **Redeploy sin caché**.
 
-## Próximas fases
-- **Fase 2:** portar la UI del generador SIIGO (la del HTML) a la app, leyendo/escribiendo la BD.
-- **Fase 3:** generación de la cuenta de cobro en PDF (regular e irregular).
-- **Fase 4:** tablero de pagos, mora, saldos y reportes.
+## Desplegar
 
-## Notas
-- `lib/siigo/utils.js` ya está probado: dígitos de verificación de las 7 mutuales correctos,
-  parser de moneda colombiano, validación de correos (incluye fix de typos sin corromper dominios
-  válidos) y teléfonos, y el desglose comisión → reserva/administración (13% socia / 17% no).
-- Portado completo de la lógica a `lib/siigo/` (todo independiente del DOM):
-  - `utils.js` — validaciones y cálculos (probado: DV de 7 mutuales, parseMoneda, correos, teléfonos, desglose comisión).
-  - `geo.js` — GEO + CAPITALES + buscarGeo (probado: exacto/solo-ciudad/solo-depto-capital/ambigua/combinada).
-  - `constantes.js` — NIT fondo, cuentas contables, producto, IVA, OBS.
-  - `generar.js` — genera los 3 archivos SIIGO (fechas cortas + coloreado rojo/amarillo); `descargar()` y `aBuffer()` para Storage.
-  - `procesar.js` — pipeline de parseo: `leerExcel()` (auto-detecta hoja), `procesarFilas()`, `procesarTexto()`.
-- Falta para Fase 2: la **UI React** del generador (formulario + carga + tabla de validación + botones)
-  que consume `procesar.js`/`generar.js` y registra el lote en Supabase. Más el login (Supabase Auth).
+Trabajar en una **rama** → mergear a **`main`** → Vercel redespliega producción solo. Cada
+rama genera un **deploy de preview** para probar sin afectar producción.
+
+## Base de datos
+
+Esquema/seed/migración en `../db/` (generados por `../scripts/migrar_historico.py`). Parches
+aplicados: `parche_fechas_historico.sql`, `parche_actividad_usuario.sql`,
+`parche_seguridad_supabase.sql`. Cambios → Supabase → SQL Editor.
