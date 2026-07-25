@@ -4,6 +4,7 @@ import { fmtPesos, fmtFecha } from "../../lib/format";
 
 const CUAT = { 1: "1° cuat (Ene–Abr)", 2: "2° cuat (May–Ago)", 3: "3° cuat (Sep–Dic)" };
 const cuatDeMes = (m) => (m ? Math.ceil(m / 4) : 0);
+const MESES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 
 export default function FacturasVenta() {
   const [cuentas, setCuentas] = useState([]);
@@ -11,6 +12,7 @@ export default function FacturasVenta() {
   const [err, setErr] = useState("");
   const [cargando, setCargando] = useState(true);
   const [fAnio, setFAnio] = useState("");
+  const [fMes, setFMes] = useState("");
   const [filtros, setFiltros] = useState({});
   const setF = (k, v) => setFiltros((f) => ({ ...f, [k]: v }));
 
@@ -48,6 +50,7 @@ export default function FacturasVenta() {
   };
   const filtradas = filas.filter((f) =>
     (!fAnio || String(f.anio) === fAnio) &&
+    (!fMes || String(f.mesNum) === fMes) &&
     (!filtros.cuat || String(f.cuat) === filtros.cuat) &&
     Object.entries(filtros).every(([k, v]) => {
       if (!v || k === "cuat") return true;
@@ -59,8 +62,9 @@ export default function FacturasVenta() {
     const g = filtradas.filter((f) => f.cuat === c);
     return { cuat: c, n: g.length, base: g.reduce((s, f) => s + f.base, 0), iva: g.reduce((s, f) => s + f.iva, 0), reserva: g.reduce((s, f) => s + f.reserva, 0) };
   });
-  const totIva = filtradas.reduce((s, f) => s + f.iva, 0);
-  const totReserva = filtradas.reduce((s, f) => s + f.reserva, 0);
+  const suma = (k) => filtradas.reduce((s, f) => s + (f[k] || 0), 0);
+  const totFacturado = suma("valor"), totBase = suma("base");
+  const totIva = suma("iva"), totAdmin = suma("admin"), totReserva = suma("reserva");
 
   async function cambiarCuat(id, val) {
     const cuatrimestre = val ? Number(val) : null;
@@ -80,16 +84,55 @@ export default function FacturasVenta() {
 
       {err && <div className="err">Error: {err}</div>}
 
-      <div className="card" style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
-        <label className="fld">Año
-          <select value={fAnio} onChange={(e) => setFAnio(e.target.value)}>
-            <option value="">Todos</option>
-            {anios.map((a) => <option key={a} value={a}>{a}</option>)}
-          </select>
-        </label>
-        <div style={{ fontSize: 12, color: "#64748b", alignSelf: "center" }}>Usa los filtros bajo cada columna para afinar la búsqueda.</div>
+      <div className="card filtro-bar">
+        <div className="fgrupo">
+          <span className="flab">Año</span>
+          <div className="chips">
+            <button className={"chip" + (!fAnio ? " on" : "")} onClick={() => setFAnio("")}>Todos</button>
+            {anios.map((a) => (
+              <button key={a} className={"chip" + (fAnio === String(a) ? " on" : "")} onClick={() => setFAnio(String(a))}>{a}</button>
+            ))}
+          </div>
+        </div>
+        <div className="fgrupo">
+          <span className="flab">Mes</span>
+          <div className="chips">
+            <button className={"chip" + (!fMes ? " on" : "")} onClick={() => setFMes("")}>Todos</button>
+            {MESES.map((m, i) => (
+              <button key={m} className={"chip chip-mes mes-row-" + (i + 1) + (fMes === String(i + 1) ? " on" : "")}
+                onClick={() => setFMes(fMes === String(i + 1) ? "" : String(i + 1))}>{m}</button>
+            ))}
+          </div>
+        </div>
+        <div className="fgrupo">
+          <span className="flab">Cuatrimestre</span>
+          <div className="chips">
+            <button className={"chip" + (!filtros.cuat ? " on" : "")} onClick={() => setF("cuat", "")}>Todos</button>
+            {[1, 2, 3].map((c) => (
+              <button key={c} className={"chip chip-cuat cuat-" + c + (filtros.cuat === String(c) ? " on" : "")}
+                onClick={() => setF("cuat", filtros.cuat === String(c) ? "" : String(c))}>{c}°</button>
+            ))}
+          </div>
+        </div>
+        {(fAnio || fMes || filtros.cuat) && (
+          <button className="logout" onClick={() => { setFAnio(""); setFMes(""); setF("cuat", ""); }}>Limpiar filtros</button>
+        )}
       </div>
 
+      {/* Totales del periodo seleccionado */}
+      <div className="cards">
+        <div className="kpi destacado">
+          <div className="label">Total facturado (c/IVA)</div>
+          <div className="value">{fmtPesos(totFacturado)}</div>
+          <div className="sub">{filtradas.length} cuenta(s) de cobro</div>
+        </div>
+        <div className="kpi"><div className="label">Base (sin IVA)</div><div className="value">{fmtPesos(totBase)}</div></div>
+        <div className="kpi"><div className="label">Total IVA</div><div className="value">{fmtPesos(totIva)}</div></div>
+        <div className="kpi"><div className="label">Administración</div><div className="value">{fmtPesos(totAdmin)}</div></div>
+        <div className="kpi"><div className="label">Total reserva</div><div className="value">{fmtPesos(totReserva)}</div></div>
+      </div>
+
+      {/* IVA por cuatrimestre */}
       <div className="cards">
         {resumen.map((r) => (
           <div className={"kpi cuat-" + r.cuat} key={r.cuat}>
@@ -98,8 +141,6 @@ export default function FacturasVenta() {
             <div className="sub">IVA · {r.n} cuentas · base {fmtPesos(r.base)}</div>
           </div>
         ))}
-        <div className="kpi"><div className="label">Total IVA</div><div className="value">{fmtPesos(totIva)}</div></div>
-        <div className="kpi"><div className="label">Total reserva</div><div className="value">{fmtPesos(totReserva)}</div></div>
       </div>
 
       <div className="card">
@@ -162,6 +203,22 @@ export default function FacturasVenta() {
       <style>{`
         .fld{display:flex;flex-direction:column;font-size:12px;font-weight:600;color:#334155;gap:5px}
         .fld select{padding:8px 10px;border:1px solid #cbd5e1;border-radius:7px;font-size:13px;font-weight:400;min-width:140px}
+        /* ── Barra de filtros con chips ── */
+        .filtro-bar{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-start}
+        .fgrupo{display:flex;flex-direction:column;gap:6px}
+        .flab{font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--gris)}
+        .chips{display:flex;flex-wrap:wrap;gap:5px}
+        .chip{border:1px solid var(--borde);background:#fff;color:var(--gris-osc);border-radius:8px;padding:5px 11px;font-size:12px;font-weight:600;cursor:pointer;transition:all .12s;font-family:inherit}
+        .chip:hover{border-color:var(--azul);color:var(--azul-osc)}
+        .chip.on{background:var(--azul-osc);border-color:var(--azul-osc);color:#fff}
+        /* El chip de mes conserva su color de mes (igual que las filas); el activo se marca con anillo dorado */
+        .chip-mes{color:var(--gris-osc)}
+        .chip-mes.on{box-shadow:inset 0 0 0 2px var(--dorado);color:var(--azul-osc);font-weight:700}
+        .chip-cuat.cuat-1{border-color:#93c5fd}.chip-cuat.cuat-2{border-color:#fdba74}.chip-cuat.cuat-3{border-color:#86efac}
+        .chip-cuat.cuat-1.on{background:#3b82f6;border-color:#3b82f6}
+        .chip-cuat.cuat-2.on{background:#f97316;border-color:#f97316}
+        .chip-cuat.cuat-3.on{background:#22c55e;border-color:#22c55e}
+        .kpi.destacado{border-left:5px solid var(--dorado);background:linear-gradient(180deg,#fffdf7,#fff)}
         tr.filtros th{background:#eef2f7;position:sticky;top:31px;padding:4px 6px;z-index:1}
         tr.filtros input,tr.filtros select{width:100%;min-width:60px;padding:4px 6px;border:1px solid #cbd5e1;border-radius:5px;font-size:11px;font-weight:400;color:#1a1a2e}
         .kpi.cuat-1{border-left:5px solid #3b82f6}
