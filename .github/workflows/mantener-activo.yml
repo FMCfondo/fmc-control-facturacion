@@ -1,55 +1,56 @@
 name: Mantener Supabase activo
 
 # El plan Free de Supabase pausa el proyecto tras ~7 días sin actividad, y esta
-# app se usa una vez al mes. Este ping semanal lo mantiene despierto para que
-# nunca lo encuentres dormido al entrar a facturar.
+# app se usa una vez al mes. Este ping semanal lo mantiene despierto.
 #
-# REQUIERE dos secretos del repositorio (Settings → Secrets and variables → Actions):
-#   SUPABASE_URL       https://<id-del-proyecto>.supabase.co
-#   SUPABASE_ANON_KEY  la clave anon/public (Supabase → Settings → API)
+# La URL del proyecto NO es secreta (viaja dentro de la app en el navegador), así
+# que va aquí directa: una pieza menos que se pueda configurar mal.
+# Solo se necesita UN secreto del repositorio (Settings → Secrets and variables →
+# Actions → pestaña "Secrets" → New repository secret):
+#   SUPABASE_ANON_KEY = la clave anon/public (Supabase → Settings → API)
+env:
+  SUPABASE_URL: https://sfgcbdaospsbjhxsifcf.supabase.co
+  APP_URL: https://facturacion.fondomutuodecobertura.com
+
 on:
   schedule:
     - cron: "0 13 * * 1"   # lunes 13:00 UTC (8:00 a. m. en Colombia)
-  workflow_dispatch:        # permite ejecutarlo a mano desde la pestaña Actions
+  workflow_dispatch:
 
 jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Verificar que los secretos existan
+      - name: Diagnóstico de la configuración
         env:
-          URL: ${{ secrets.SUPABASE_URL }}
           KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
-          faltan=""
-          [ -z "$URL" ] && faltan="$faltan SUPABASE_URL"
-          [ -z "$KEY" ] && faltan="$faltan SUPABASE_ANON_KEY"
-          if [ -n "$faltan" ]; then
-            echo "::error::Faltan estos secretos en el repositorio:$faltan"
-            echo "Configúralos en Settings → Secrets and variables → Actions → New repository secret."
-            exit 1
+          echo "URL del proyecto: $SUPABASE_URL"
+          if [ -z "$KEY" ]; then
+            echo "::warning::El secreto SUPABASE_ANON_KEY no está configurado (o está vacío)."
+            echo "Créalo en: Settings → Secrets and variables → Actions → pestaña 'Secrets' → New repository secret."
+            echo "Ojo: debe estar en la pestaña ACTIONS, no en Dependabot ni Codespaces."
+          else
+            echo "Clave anon: configurada (${#KEY} caracteres)"
           fi
-          echo "Secretos configurados correctamente."
 
       - name: Consultar la base de datos
         env:
-          URL: ${{ secrets.SUPABASE_URL }}
           KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
-          # Consulta trivial. Con RLS activo y sin políticas no devuelve datos,
-          # pero cuenta como actividad y evita que el proyecto se pause.
+          # Con RLS activo y sin políticas no devuelve datos, pero el request llega
+          # al proyecto y cuenta como actividad (que es lo que evita la pausa).
           codigo=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 \
             -H "apikey: $KEY" -H "Authorization: Bearer $KEY" \
-            "${URL%/}/rest/v1/parametros?select=clave&limit=1") || codigo="000"
+            "$SUPABASE_URL/rest/v1/parametros?select=clave&limit=1") || codigo="000"
           echo "Respuesta de Supabase: HTTP $codigo"
-          if [ "$codigo" = "000" ]; then
-            echo "::error::Supabase no respondió (¿el proyecto está pausado o la URL es incorrecta?)."
-            exit 1
-          fi
-          echo "Proyecto despierto."
+          case "$codigo" in
+            000) echo "::error::Supabase no respondió. ¿El proyecto está pausado o la URL cambió?"; exit 1 ;;
+            401) echo "::warning::HTTP 401 (clave ausente o inválida). El proyecto SÍ recibió el request y sigue despierto, pero conviene revisar el secreto." ;;
+            *)   echo "Proyecto despierto y respondiendo." ;;
+          esac
 
       - name: Despertar la aplicación
         run: |
-          codigo=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 \
-            https://facturacion.fondomutuodecobertura.com/login) || codigo="000"
+          codigo=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "$APP_URL/login") || codigo="000"
           echo "Respuesta de la app: HTTP $codigo"
