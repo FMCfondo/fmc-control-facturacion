@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { fmtPesos } from "../../lib/format";
 
 const MESES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
@@ -47,12 +47,17 @@ export default function Dashboard() {
   const anios = useMemo(() => [...new Set(filas.map((f) => f.anio).filter(Boolean))].sort((a, b) => b - a), [filas]);
 
   // Filtro reutilizable (permite ignorar el mes para el gráfico anual).
-  const aplica = (f, { anio = fAnio, mes = fMes, mut = fMut } = {}) =>
-    (!anio || String(f.anio) === anio) &&
-    (!mes || String(f.mesNum) === mes) &&
-    (!mut || f.cliente === mut);
+  // useCallback: así solo cambia cuando cambian los filtros, y los useMemo que la
+  // usan pueden declararla como dependencia sin recalcularse en cada render.
+  const aplica = useCallback(
+    (f, { anio = fAnio, mes = fMes, mut = fMut } = {}) =>
+      (!anio || String(f.anio) === anio) &&
+      (!mes || String(f.mesNum) === mes) &&
+      (!mut || f.cliente === mut),
+    [fAnio, fMes, fMut]
+  );
 
-  const sel = useMemo(() => filas.filter((f) => aplica(f)), [filas, fAnio, fMes, fMut]);
+  const sel = useMemo(() => filas.filter((f) => aplica(f)), [filas, aplica]);
 
   const suma = (arr, k) => arr.reduce((s, x) => s + (x[k] || 0), 0);
   const tot = {
@@ -97,7 +102,7 @@ export default function Dashboard() {
       etq: String(a), key: String(a),
       valor: suma(filas.filter((f) => f.anio === a && (!fMut || f.cliente === fMut)), "valor"),
     }));
-  }, [filas, fAnio, fMut, anios]);
+  }, [filas, fAnio, fMut, anios, aplica]);
   const maxSerie = Math.max(...serie.map((s) => s.valor), 1);
 
   // Ranking de clientes/mutuales.

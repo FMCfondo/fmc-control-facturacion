@@ -7,6 +7,16 @@ const fmtF = (d) => (d ? new Date(String(d).slice(0, 10) + "T12:00:00").toLocale
 const TIPO_BACKUP = "Respaldo BD";
 const DIAS_AVISO = 40; // el respaldo es mensual: pasados ~40 días se avisa
 
+// Botón de descarga. Va FUERA del componente para que React no lo recree en cada render.
+function Btn({ id, cargando, onClick, children, primary }) {
+  return (
+    <button className={primary ? "btn-primary" : "logout"} disabled={!!cargando} onClick={onClick}
+      style={{ minWidth: 220, justifyContent: "center" }}>
+      {cargando === id ? "Generando…" : children}
+    </button>
+  );
+}
+
 export default function Reportes() {
   const [cargando, setCargando] = useState("");
   const [msg, setMsg] = useState("");
@@ -106,11 +116,6 @@ export default function Reportes() {
     setCargando("");
   }
 
-  const Btn = ({ id, onClick, children, primary }) => (
-    <button className={primary ? "btn-primary" : "logout"} disabled={!!cargando} onClick={onClick} style={{ minWidth: 220, justifyContent: "center" }}>
-      {cargando === id ? "Generando…" : children}
-    </button>
-  );
 
   return (
     <div className="wrap">
@@ -135,7 +140,7 @@ export default function Reportes() {
           proyecto nuevo y queda todo igual. Descárgalo cada mes y guárdalo en Drive.
           {diasBackup > 0 && diasBackup < DIAS_AVISO && <><br /><span style={{ color: "#166534" }}>Último respaldo: hace {diasBackup} día(s).</span></>}
         </p>
-        <Btn id="bd" onClick={respaldoBD} primary>⬇ Descargar respaldo de base de datos (.sql)</Btn>
+        <Btn id="bd" cargando={cargando} onClick={respaldoBD} primary>⬇ Descargar respaldo de base de datos (.sql)</Btn>
         <p style={{ fontSize: 11.5, color: "var(--gris)", marginTop: 10 }}>
           Contiene datos personales de los asociados: guárdalo en un lugar privado, nunca en repositorios públicos.
         </p>
@@ -144,16 +149,16 @@ export default function Reportes() {
       <div className="card">
         <h2>Respaldo en Excel (para consultar)</h2>
         <p style={{ fontSize: 13, color: "var(--gris)", marginBottom: 14 }}>Un solo archivo Excel con todas las tablas (cuentas, facturas, pagos, mutuales, ítems, configuración). Útil para revisar o compartir información; <b>no</b> sirve para restaurar el sistema.</p>
-        <Btn id="full" onClick={respaldoCompleto}>⬇ Descargar respaldo en Excel</Btn>
+        <Btn id="full" cargando={cargando} onClick={respaldoCompleto}>⬇ Descargar respaldo en Excel</Btn>
       </div>
 
       <div className="card">
         <h2>Reportes por tabla</h2>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <Btn id="cuentas_cobro" onClick={() => tabla("cuentas_cobro", "Cuentas de cobro")}>⬇ Cuentas de cobro</Btn>
-          <Btn id="facturas_siigo" onClick={() => tabla("facturas_siigo", "Facturas por asociado")}>⬇ Facturas (asociados)</Btn>
-          <Btn id="pagos" onClick={() => tabla("pagos", "Pagos")}>⬇ Pagos</Btn>
-          <Btn id="mutuales" onClick={() => tabla("mutuales", "Clientes - Mutuales")}>⬇ Clientes / Mutuales</Btn>
+          <Btn id="cuentas_cobro" cargando={cargando} onClick={() => tabla("cuentas_cobro", "Cuentas de cobro")}>⬇ Cuentas de cobro</Btn>
+          <Btn id="facturas_siigo" cargando={cargando} onClick={() => tabla("facturas_siigo", "Facturas por asociado")}>⬇ Facturas (asociados)</Btn>
+          <Btn id="pagos" cargando={cargando} onClick={() => tabla("pagos", "Pagos")}>⬇ Pagos</Btn>
+          <Btn id="mutuales" cargando={cargando} onClick={() => tabla("mutuales", "Clientes - Mutuales")}>⬇ Clientes / Mutuales</Btn>
         </div>
         {msg && <div className={msg.startsWith("✓") ? "ok-backup" : "err"} style={{ marginTop: 14 }}>{msg}</div>}
       </div>

@@ -1,20 +1,21 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { createClient } from "../../lib/supabaseClient";
 
 export default function Seguridad() {
-  const sb = createClient();
+  // useMemo: un solo cliente por montaje (antes se recreaba en cada render).
+  const sb = useMemo(() => createClient(), []);
   const [factores, setFactores] = useState([]);
   const [enroll, setEnroll] = useState(null); // { id, qr, secret }
   const [code, setCode] = useState("");
   const [msg, setMsg] = useState("");
   const [cargando, setCargando] = useState(false);
 
-  async function cargar() {
+  const cargar = useCallback(async () => {
     const { data } = await sb.auth.mfa.listFactors();
     setFactores((data?.totp || []).filter((f) => f.status === "verified"));
-  }
-  useEffect(() => { cargar(); /* eslint-disable-next-line */ }, []);
+  }, [sb]);
+  useEffect(() => { cargar(); }, [cargar]);
 
   async function activar() {
     setMsg(""); setCargando(true);

@@ -11,6 +11,22 @@ const VACIA = {
   anticipos: "", estado: "pendiente", notas: "",
 };
 
+// Encabezado ordenable y accesible: clic o teclado (Enter/Espacio) + aria-sort.
+// Va FUERA del componente para que React no lo recree en cada render (si se define
+// dentro, el navegador desmonta y vuelve a montar la cabecera en cada cambio).
+// Sin role="button": el <th> ya es "columnheader", que es el rol que admite aria-sort.
+function ThSort({ campo, orden, onOrdenar, children }) {
+  const activo = orden.campo === campo;
+  return (
+    <th className="sortable" tabIndex={0}
+        aria-sort={activo ? (orden.dir === 1 ? "ascending" : "descending") : "none"}
+        onClick={() => onOrdenar(campo)}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOrdenar(campo); } }}>
+      {children}{activo ? (orden.dir === 1 ? " ▲" : " ▼") : ""}
+    </th>
+  );
+}
+
 export default function CuentasManager({ cuentas, mutuales }) {
   // El tablero (page.jsx) es force-dynamic + noStore, así que estos datos ya
   // llegan frescos del servidor; no hace falta volver a pedirlos al montar.
@@ -266,18 +282,9 @@ export default function CuentasManager({ cuentas, mutuales }) {
     });
   }
   const ordenarPor = (k) => setOrden((o) => ({ campo: k, dir: o.campo === k ? -o.dir : 1 }));
-  const flecha = (k) => (orden.campo === k ? (orden.dir === 1 ? " ▲" : " ▼") : "");
   const hayFiltros = Object.values(filtros).some(Boolean) || orden.campo;
 
   // Encabezado ordenable accesible: clic o teclado (Enter/Espacio) + aria-sort.
-  const ThSort = ({ k, children }) => (
-    <th className="sortable" role="button" tabIndex={0}
-        aria-sort={orden.campo === k ? (orden.dir === 1 ? "ascending" : "descending") : "none"}
-        onClick={() => ordenarPor(k)}
-        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); ordenarPor(k); } }}>
-      {children}{flecha(k)}
-    </th>
-  );
 
   return (
     <>
@@ -300,17 +307,17 @@ export default function CuentasManager({ cuentas, mutuales }) {
         <table>
           <thead>
             <tr>
-              <ThSort k="consecutivo">CC #</ThSort>
-              <ThSort k="tipo">Tipo</ThSort>
-              <ThSort k="cliente">Cliente / Mutual</ThSort>
-              <ThSort k="mes">Mes</ThSort>
-              <ThSort k="anio">Año</ThSort>
-              <ThSort k="fecha">Fecha</ThSort>
-              <ThSort k="rango">Rango facturas</ThSort>
-              <ThSort k="facturado">Facturado</ThSort>
-              <ThSort k="recibido">Recibido</ThSort>
-              <ThSort k="saldo">Saldo</ThSort>
-              <ThSort k="estado">Estado</ThSort>
+              <ThSort campo="consecutivo" orden={orden} onOrdenar={ordenarPor}>CC #</ThSort>
+              <ThSort campo="tipo" orden={orden} onOrdenar={ordenarPor}>Tipo</ThSort>
+              <ThSort campo="cliente" orden={orden} onOrdenar={ordenarPor}>Cliente / Mutual</ThSort>
+              <ThSort campo="mes" orden={orden} onOrdenar={ordenarPor}>Mes</ThSort>
+              <ThSort campo="anio" orden={orden} onOrdenar={ordenarPor}>Año</ThSort>
+              <ThSort campo="fecha" orden={orden} onOrdenar={ordenarPor}>Fecha</ThSort>
+              <ThSort campo="rango" orden={orden} onOrdenar={ordenarPor}>Rango facturas</ThSort>
+              <ThSort campo="facturado" orden={orden} onOrdenar={ordenarPor}>Facturado</ThSort>
+              <ThSort campo="recibido" orden={orden} onOrdenar={ordenarPor}>Recibido</ThSort>
+              <ThSort campo="saldo" orden={orden} onOrdenar={ordenarPor}>Saldo</ThSort>
+              <ThSort campo="estado" orden={orden} onOrdenar={ordenarPor}>Estado</ThSort>
               <th></th>
             </tr>
             <tr className="filtros">
@@ -526,7 +533,8 @@ export default function CuentasManager({ cuentas, mutuales }) {
     {docId && (
       <div className="doc-overlay" onClick={(e) => e.target === e.currentTarget && setDocId(null)}>
         <div className="doc-panel">
-          <CuentaVista id={docId} onCerrar={() => setDocId(null)} />
+          {/* key: cada cuenta se monta limpia (evita ver datos de la anterior al cambiar) */}
+          <CuentaVista key={docId} id={docId} onCerrar={() => setDocId(null)} />
         </div>
       </div>
     )}
