@@ -116,6 +116,19 @@ tbody tr:hover{background:#eef3fb}
 .btn-login:disabled{opacity:.6;cursor:not-allowed}
 .login-err{background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px;color:#991b1b;font-size:12px;margin-bottom:14px}
 
+/* ─── PANEL SUPERPUESTO DE DOCUMENTOS (cuenta de cobro / estado de cuenta) ─── */
+.doc-overlay{position:fixed;inset:0;background:rgba(16,37,88,.55);z-index:70;display:flex;align-items:flex-start;justify-content:center;padding:22px 16px;overflow-y:auto}
+.doc-panel{background:var(--gris-bg);border-radius:14px;width:100%;max-width:880px;box-shadow:0 24px 70px rgba(16,37,88,.4);padding:6px}
+@media(max-width:600px){.doc-overlay{padding:10px 6px}}
+/* Al imprimir con el panel abierto: ocultar la app y dejar solo el documento */
+@media print{
+  body.con-doc .sidebar,body.con-doc .sb-mobilebar{display:none!important}
+  body.con-doc .shell-main{margin-left:0!important;padding-top:0!important}
+  body.con-doc .wrap>*:not(.doc-overlay){display:none!important}
+  body.con-doc .doc-overlay{position:static!important;background:none!important;padding:0!important;overflow:visible!important;display:block!important}
+  body.con-doc .doc-panel{max-width:100%!important;box-shadow:none!important;border-radius:0!important;padding:0!important;background:#fff!important}
+}
+
 /* ─── ACCESIBILIDAD Y PULIDO ─── */
 html{scroll-behavior:smooth}
 :focus-visible{outline:2px solid var(--azul-claro);outline-offset:2px;border-radius:4px}
