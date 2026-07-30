@@ -1,9 +1,10 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 
-// Protege toda la app: sin sesión → redirige a /login.
+// Protege las PÁGINAS de la app: sin sesión → redirige a /login.
+// (Antes se llamaba middleware.js; Next 16 renombró la convención a proxy.js.)
 // Envuelto en try/catch para que un fallo de Supabase no derribe el sitio (500).
-export async function middleware(request) {
+export async function proxy(request) {
   const path = request.nextUrl.pathname;
   const esLogin = path.startsWith("/login");
 
@@ -55,7 +56,7 @@ export async function middleware(request) {
     }
     return response;
   } catch (e) {
-    console.error("middleware error:", e?.message || e);
+    console.error("proxy error:", e?.message || e);
     // Falla cerrado: a login (sin loop si ya estamos en login).
     return esLogin ? NextResponse.next() : redirigirLogin(request);
   }
@@ -68,7 +69,7 @@ function redirigirLogin(request) {
 }
 
 // Se excluye /api a propósito: cada ruta /api ya valida la sesión con
-// requireUser() (sesión + allowlist + 2FA). Si el middleware también corriera
+// requireUser() (sesión + allowlist + 2FA). Si el proxy también corriera
 // ahí, se pagaría DOS veces el viaje de red a Supabase Auth en cada llamada de
 // datos. Además, una API debe responder 401 en JSON, no un redirect a /login.
 export const config = {

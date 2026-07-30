@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { FONDO } from "../lib/siigo/constantes";
 import { fmtPesos, fmtFecha } from "../lib/format";
 import { calcularTotalesCuenta } from "../lib/cuenta";
@@ -19,8 +20,9 @@ export default function CuentaVista({ id, onCerrar }) {
   const [to, setTo] = useState(""), [cc, setCc] = useState(""), [mensaje, setMensaje] = useState("");
   const [enviando, setEnviando] = useState(false), [envioMsg, setEnvioMsg] = useState("");
 
+  // El panel se monta con key={id} (ver CuentasManager), así que no hace falta
+  // reiniciar el estado aquí: cada documento arranca con su propio estado limpio.
   useEffect(() => {
-    setData(null); setErr("");
     fetch(`/api/documento?id=${id}`, { cache: "no-store" })
       .then((r) => r.json())
       .then((d) => { if (d.error) throw new Error(d.error); setData(d); })
@@ -83,7 +85,7 @@ export default function CuentaVista({ id, onCerrar }) {
       <div className="no-print barra">
         {onCerrar
           ? <button className="btn-sec" onClick={onCerrar}>← Cerrar</button>
-          : <a href="/" className="btn-sec">← Volver</a>}
+          : <Link href="/" className="btn-sec">← Volver</Link>}
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <button className="btn-print" onClick={() => imprimir("unido")}>🖨 Documento unido</button>
           <button className="btn-sec" onClick={() => imprimir("cuenta")}>Solo cuenta</button>
