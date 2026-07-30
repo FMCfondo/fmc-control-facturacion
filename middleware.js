@@ -67,6 +67,10 @@ function redirigirLogin(request) {
   return NextResponse.redirect(u);
 }
 
+// Se excluye /api a propósito: cada ruta /api ya valida la sesión con
+// requireUser() (sesión + allowlist + 2FA). Si el middleware también corriera
+// ahí, se pagaría DOS veces el viaje de red a Supabase Auth en cada llamada de
+// datos. Además, una API debe responder 401 en JSON, no un redirect a /login.
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)"],
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|icon.png|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)"],
 };
