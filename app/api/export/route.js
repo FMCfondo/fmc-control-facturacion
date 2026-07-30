@@ -10,7 +10,9 @@ export async function GET() {
     const { response } = await requireUser();
     if (response) return response;
     const sb = supabaseAdmin();
-    const [cc, fs, pg, mu, it, cf, pa] = await Promise.all([
+    // `actividad` se incluye para que el respaldo de la BD sea completo
+    // (la bitácora es parte de la trazabilidad del sistema).
+    const [cc, fs, pg, mu, it, cf, pa, ac] = await Promise.all([
       sb.from("cuentas_cobro").select("*").order("consecutivo"),
       sb.from("facturas_siigo").select("*").order("consecutivo"),
       sb.from("pagos").select("*").order("fecha"),
@@ -18,6 +20,7 @@ export async function GET() {
       sb.from("items_cuenta_cobro").select("*"),
       sb.from("config").select("*"),
       sb.from("parametros").select("*"),
+      sb.from("actividad").select("*").order("creado_en"),
     ]);
     return NextResponse.json({
       cuentas_cobro: cc.data || [],
@@ -27,6 +30,7 @@ export async function GET() {
       items_cuenta_cobro: it.data || [],
       config: cf.data || [],
       parametros: pa.data || [],
+      actividad: ac.data || [],
     });
   } catch (e) {
     console.error(e); return NextResponse.json({ error: "Error del servidor" }, { status: 500 });
