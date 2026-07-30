@@ -14,6 +14,7 @@ const ICON = {
   reportes: (<><path d="M12 4v11" /><path d="M8 11l4 4 4-4" /><path d="M5 20h14" /></>),
   actividad: (<><path d="M4 12a8 8 0 1 0 2.6-5.9" /><path d="M4 4v3.6h3.6" /><path d="M12 8v4.2l3 1.8" /></>),
   seguridad: (<><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></>),
+  estado: (<><path d="M9 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-3" /><rect x="9" y="2" width="6" height="4" rx="1" /><line x1="8.5" y1="11" x2="15.5" y2="11" /><line x1="8.5" y1="15" x2="13" y2="15" /></>),
 };
 function Ico({ name }) {
   return (
@@ -29,6 +30,7 @@ const GROUPS = [
     { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
     { href: "/generar", label: "Generar facturación", icon: "generar" },
     { href: "/facturas-venta", label: "Facturas de venta", icon: "facturas" },
+    { href: "/estado-cuenta", label: "Estado de cuenta", icon: "estado" },
   ] },
   { label: "Gestión", links: [
     { href: "/clientes", label: "Clientes", icon: "clientes" },

@@ -1,7 +1,8 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { fmtPesos, fmtFecha } from "../lib/format";
 import { IVA } from "../lib/siigo/constantes";
+import CuentaVista from "./CuentaVista";
 
 const VACIA = {
   tipo: "regular", mutual_id: "", cliente_nombre: "", consecutivo: "",
@@ -23,6 +24,14 @@ export default function CuentasManager({ cuentas, mutuales }) {
       if (r.ok) setLista(d.cuentas || []);
     } catch {}
   }
+
+  // Cuenta de cobro mostrada en el panel superpuesto (null = cerrado).
+  const [docId, setDocId] = useState(null);
+  // Marca el <body> para que al imprimir solo salga el documento (ver globals.css).
+  useEffect(() => {
+    document.body.classList.toggle("con-doc", !!docId);
+    return () => document.body.classList.remove("con-doc");
+  }, [docId]);
 
   const [abierto, setAbierto] = useState(false);
   const [form, setForm] = useState(VACIA);
@@ -349,7 +358,7 @@ export default function CuentasManager({ cuentas, mutuales }) {
                   </select>
                 </td>
                 <td style={{ whiteSpace: "nowrap" }}>
-                  <a className="mini" href={`/cuenta/${c.id}`} target="_blank" rel="noreferrer">Cuenta</a>{" "}
+                  <button className="mini" onClick={() => setDocId(c.id)}>Cuenta</button>{" "}
                   <button className="mini" onClick={() => abrirPagos(c)}>Pagos</button>{" "}
                   <button className="mini" onClick={() => editar(c)}>Editar</button>
                 </td>
@@ -512,6 +521,15 @@ export default function CuentasManager({ cuentas, mutuales }) {
         .del{background:#fef2f2;color:#dc2626;border:1px solid #fecaca;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer}
       `}</style>
     </div>
+
+    {/* Cuenta de cobro superpuesta (antes abría una pestaña nueva) */}
+    {docId && (
+      <div className="doc-overlay" onClick={(e) => e.target === e.currentTarget && setDocId(null)}>
+        <div className="doc-panel">
+          <CuentaVista id={docId} onCerrar={() => setDocId(null)} />
+        </div>
+      </div>
+    )}
     </>
   );
 }
