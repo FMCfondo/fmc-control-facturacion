@@ -1,23 +1,25 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../lib/supabase";
+import { leerTodo } from "../../../lib/db";
 import { requireUser } from "../../../lib/requireUser";
 
 export const dynamic = "force-dynamic";
 
 // GET → cuentas de cobro con saldo pendiente (base del estado de cuenta por cliente).
+// Paginado: el saldo total de la cartera se suma sobre estas filas. Ver lib/db.js.
 export async function GET() {
   try {
     const { response } = await requireUser();
     if (response) return response;
     const sb = supabaseAdmin();
 
-    const { data, error } = await sb.from("cuentas_cobro")
-      .select("id,consecutivo,mutual_id,cliente_nombre,cliente_correo,mes,anio,fecha_elaboracion,fecha_vencimiento,valor_facturado,valor_recibido,anticipos,saldo,estado,mutuales(id,nombre,nit,dv,correo,correos_envio,correos_cc)")
-      .gt("saldo", 0)
-      .order("fecha_vencimiento", { ascending: true, nullsFirst: false });
-    if (error) throw error;
+    const { filas } = await leerTodo(sb, "cuentas_cobro", {
+      columnas: "id,consecutivo,mutual_id,cliente_nombre,cliente_correo,mes,anio,fecha_elaboracion,fecha_vencimiento,valor_facturado,valor_recibido,anticipos,saldo,estado,mutuales(id,nombre,nit,dv,correo,correos_envio,correos_cc)",
+      filtro: (q) => q.gt("saldo", 0),
+      orden: [{ col: "fecha_vencimiento", opts: { ascending: true, nullsFirst: false } }],
+    });
 
-    const pendientes = (data || []).map((c) => {
+    const pendientes = filas.map((c) => {
       const m = c.mutuales || null;
       return {
         id: c.id, cc: c.consecutivo,

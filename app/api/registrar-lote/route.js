@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../lib/supabase";
+import { esUUID } from "../../../lib/validar";
 import { logActividad, resumenCuenta, fmtPesosLog } from "../../../lib/actividad";
 import { requireUser } from "../../../lib/requireUser";
 
@@ -22,6 +23,9 @@ export async function POST(request) {
     const { cuenta, facturas } = await request.json();
     if (!cuenta || !cuenta.consecutivo) {
       return NextResponse.json({ error: "Faltan datos de la cuenta de cobro" }, { status: 400 });
+    }
+    if (cuenta.mutual_id != null && !esUUID(cuenta.mutual_id)) {
+      return NextResponse.json({ error: "mutual_id no válido" }, { status: 400 });
     }
     const datosCuenta = pick(cuenta, CAMPOS_CUENTA);
     const sb = supabaseAdmin();

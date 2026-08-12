@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../lib/supabase";
+import { esUUID } from "../../../lib/validar";
 import { requireUser } from "../../../lib/requireUser";
 
 export const dynamic = "force-dynamic";
@@ -10,7 +11,7 @@ export async function GET(request) {
     const { response } = await requireUser();
     if (response) return response;
     const id = new URL(request.url).searchParams.get("id");
-    if (!id) return NextResponse.json({ error: "Falta id" }, { status: 400 });
+    if (!esUUID(id)) return NextResponse.json({ error: "Falta el id o no es válido" }, { status: 400 });
     const sb = supabaseAdmin();
 
     const { data: cuenta, error } = await sb.from("cuentas_cobro").select("*").eq("id", id).single();

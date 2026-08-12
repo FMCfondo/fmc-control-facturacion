@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../lib/supabase";
+import { esUUID } from "../../../lib/validar";
 import { logActividad, resumenCuenta, fmtPesosLog } from "../../../lib/actividad";
 import { requireUser } from "../../../lib/requireUser";
 
@@ -11,7 +12,7 @@ export async function GET(request) {
     const { response } = await requireUser();
     if (response) return response;
     const id = new URL(request.url).searchParams.get("cuenta_cobro_id");
-    if (!id) return NextResponse.json({ error: "Falta cuenta_cobro_id" }, { status: 400 });
+    if (!esUUID(id)) return NextResponse.json({ error: "Falta cuenta_cobro_id o no es válido" }, { status: 400 });
     const sb = supabaseAdmin();
     const { data, error } = await sb.from("pagos").select("*").eq("cuenta_cobro_id", id).order("fecha");
     if (error) throw error;
@@ -27,7 +28,9 @@ export async function POST(request) {
     const { response } = await requireUser();
     if (response) return response;
     const b = await request.json();
-    if (!b.cuenta_cobro_id || !b.fecha || b.valor == null)
+    if (!esUUID(b.cuenta_cobro_id))
+      return NextResponse.json({ error: "Falta la cuenta de cobro o no es válida" }, { status: 400 });
+    if (!b.fecha || b.valor == null)
       return NextResponse.json({ error: "Faltan datos del pago (fecha y valor)" }, { status: 400 });
     if (!Number.isFinite(Number(b.valor)))
       return NextResponse.json({ error: "El valor del pago no es un número válido" }, { status: 400 });
@@ -59,6 +62,10 @@ export async function DELETE(request) {
     const { response } = await requireUser();
     if (response) return response;
     const b = await request.json();
+    if (b.cuenta_cobro_id != null && !esUUID(b.cuenta_cobro_id))
+      return NextResponse.json({ error: "cuenta_cobro_id no válido" }, { status: 400 });
+    if (b.id != null && !esUUID(b.id))
+      return NextResponse.json({ error: "id de pago no válido" }, { status: 400 });
     const sb = supabaseAdmin();
     if (b.cuenta_cobro_id) {
       // Borrado de TODOS los pagos de una cuenta: registrar cuántos y el total.

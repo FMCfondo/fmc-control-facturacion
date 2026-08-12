@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../lib/supabase";
+import { leerTodo } from "../../../lib/db";
+import { esUUID } from "../../../lib/validar";
 import { logActividad, resumenCuenta, fmtPesosLog } from "../../../lib/actividad";
 import { requireUser } from "../../../lib/requireUser";
 
@@ -21,17 +23,20 @@ function limpiar(body) {
 }
 
 // Lista todas las cuentas de cobro (para refrescar la tabla tras un cambio).
+// Paginado: el tablero suma cartera sobre estas filas. Ver lib/db.js.
 export async function GET() {
   try {
     const { response } = await requireUser();
     if (response) return response;
     const sb = supabaseAdmin();
-    const { data, error } = await sb.from("cuentas_cobro").select("*")
-      .order("anio", { ascending: false })
-      .order("mes", { ascending: false, nullsFirst: false })
-      .order("consecutivo", { ascending: false });
-    if (error) throw error;
-    return NextResponse.json({ cuentas: data });
+    const { filas } = await leerTodo(sb, "cuentas_cobro", {
+      orden: [
+        { col: "anio", opts: { ascending: false } },
+        { col: "mes", opts: { ascending: false, nullsFirst: false } },
+        { col: "consecutivo", opts: { ascending: false } },
+      ],
+    });
+    return NextResponse.json({ cuentas: filas });
   } catch (e) {
     console.error(e); return NextResponse.json({ error: "Error del servidor" }, { status: 500 });
   }
@@ -89,7 +94,7 @@ export async function PATCH(request) {
     const { response } = await requireUser();
     if (response) return response;
     const body = await request.json();
-    if (!body.id) return NextResponse.json({ error: "Falta el id" }, { status: 400 });
+    if (!esUUID(body.id)) return NextResponse.json({ error: "Falta el id o no es válido" }, { status: 400 });
     const datos = limpiar(body);
     const sb = supabaseAdmin();
     const { error } = await sb.from("cuentas_cobro").update(datos).eq("id", body.id);
@@ -114,7 +119,7 @@ export async function DELETE(request) {
     const { response } = await requireUser();
     if (response) return response;
     const { id } = await request.json();
-    if (!id) return NextResponse.json({ error: "Falta el id" }, { status: 400 });
+    if (!esUUID(id)) return NextResponse.json({ error: "Falta el id o no es válido" }, { status: 400 });
     const sb = supabaseAdmin();
     const r = await resumenCuenta(sb, id); // snapshot ANTES de borrar
     const { error } = await sb.from("cuentas_cobro").delete().eq("id", id);

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../lib/supabase";
+import { esUUID } from "../../../lib/validar";
 import { requireUser } from "../../../lib/requireUser";
 import { logActividad } from "../../../lib/actividad";
 
@@ -48,7 +49,7 @@ export async function PATCH(request) {
     const { response } = await requireUser();
     if (response) return response;
     const b = await request.json();
-    if (!b.id) return NextResponse.json({ error: "Falta el id" }, { status: 400 });
+    if (!esUUID(b.id)) return NextResponse.json({ error: "Falta el id o no es válido" }, { status: 400 });
     const datos = limpiar(b);
     const sb = supabaseAdmin();
     const { error } = await sb.from("mutuales").update(datos).eq("id", b.id);

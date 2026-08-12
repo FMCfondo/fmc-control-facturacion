@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { filasSeguras } from "../../lib/validar";
 // xlsx-js-style se carga bajo demanda (import dinámico) para no inflar el bundle inicial.
 
 const HOY = () => new Date().toISOString().slice(0, 10);
@@ -56,7 +57,12 @@ export default function Reportes() {
     fetch("/api/actividad", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tipo: "Descarga", descripcion }) }).catch(() => {});
 
   // Construye una hoja desde un arreglo de objetos.
-  const hoja = (XLSX, arr) => XLSX.utils.json_to_sheet(arr.length ? arr : [{ vacio: "sin datos" }]);
+  // `filasSeguras` neutraliza las celdas que empiezan por = + - @: Excel las
+  // interpreta como fórmula, y el daño ocurriría en el equipo de quien abra el
+  // archivo, no aquí. Los nombres y correos de `facturas_siigo` vienen de las
+  // plantillas que envían las mutuales, así que no todo el contenido es propio.
+  const hoja = (XLSX, arr) =>
+    XLSX.utils.json_to_sheet(arr.length ? filasSeguras(arr) : [{ vacio: "sin datos" }]);
 
   async function respaldoCompleto() {
     setCargando("full"); setMsg("");

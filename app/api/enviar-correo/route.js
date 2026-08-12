@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
 import { supabaseAdmin } from "../../../lib/supabase";
+import { esUUID } from "../../../lib/validar";
 import { logActividad } from "../../../lib/actividad";
 import { generarPDFCuenta } from "../../../lib/pdf";
 import { requireUser } from "../../../lib/requireUser";
+import { origenApp } from "../../../lib/origen";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,6 +14,8 @@ const MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto"
 const pesos = (v) => "$" + Math.round(Number(v) || 0).toLocaleString("es-CO");
 const lista = (s) => String(s || "").split(/[,;]/).map((x) => x.trim()).filter(Boolean);
 // Escapa texto que se interpola dentro del HTML del correo (evita inyección de HTML).
+// Se aplica a TODO lo interpolado salvo `fondo.firma`, que va como HTML a
+// propósito para permitir una firma con formato (ver más abajo).
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
 function plantilla({ origin, nombre, cc, periodo, total, mensaje, fondo }) {
@@ -23,7 +27,7 @@ function plantilla({ origin, nombre, cc, periodo, total, mensaje, fondo }) {
         <tr><td style="background:linear-gradient(100deg,#102558,#1a3a8f);padding:22px 28px;border-bottom:3px solid #c9a14a">
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
             <td align="left" valign="middle">
-              <div style="color:#fff;font-size:19px;font-weight:bold">${fondo.nombre}</div>
+              <div style="color:#fff;font-size:19px;font-weight:bold">${esc(fondo.nombre)}</div>
               <div style="color:#e3c97a;font-size:13px;margin-top:3px">Cuenta de cobro</div>
             </td>
             <td align="right" valign="middle" width="140">
@@ -33,16 +37,17 @@ function plantilla({ origin, nombre, cc, periodo, total, mensaje, fondo }) {
         </td></tr>
         <tr><td style="padding:28px">
           <p style="font-size:15px;margin:0 0 12px">Estimados señores <strong>${esc(nombre)}</strong>,</p>
-          <p style="font-size:14px;line-height:1.6;margin:0 0 16px">Adjunto encontrarán la <strong>cuenta de cobro N° ${cc}</strong>, correspondiente a las <strong>garantías del mes de ${periodo}</strong>, junto con la relación de facturas generadas.</p>
+          <p style="font-size:14px;line-height:1.6;margin:0 0 16px">Adjunto encontrarán la <strong>cuenta de cobro N° ${esc(cc)}</strong>, correspondiente a las <strong>garantías del mes de ${esc(periodo)}</strong>, junto con la relación de facturas generadas.</p>
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6fa;border-radius:10px;margin:8px 0 18px"><tr><td style="padding:14px 18px">
             <span style="font-size:12px;color:#6b7585">Valor total</span><br><span style="font-size:22px;font-weight:bold;color:#102558">${total}</span>
           </td></tr></table>
           ${mensaje ? `<p style="font-size:14px;line-height:1.6;margin:0 0 16px;color:#3a4358">${esc(mensaje).replace(/\n/g, "<br>")}</p>` : ""}
           <p style="font-size:14px;line-height:1.6;margin:0 0 14px">Quedamos atentos a cualquier inquietud.<br>Cordialmente,</p>
-          ${fondo.firma ? `<div style="font-size:13px;color:#3a4358;line-height:1.5">${fondo.firma}</div>` : `<p style="font-size:14px;font-weight:bold;margin:0;color:#102558">${fondo.nombre}</p>`}
+          ${/* `firma` va sin escapar A PROPÓSITO: permite una firma con formato. Solo la edita el operador desde Configuración. */ ""}
+          ${fondo.firma ? `<div style="font-size:13px;color:#3a4358;line-height:1.5">${fondo.firma}</div>` : `<p style="font-size:14px;font-weight:bold;margin:0;color:#102558">${esc(fondo.nombre)}</p>`}
         </td></tr>
         <tr><td align="center" style="background:#102558;padding:18px 28px;color:#cdd6ea;font-size:12px;line-height:1.6">
-          NIT: ${fondo.nit} · ${fondo.direccion}<br>${fondo.correo} · ${fondo.telefono}
+          NIT: ${esc(fondo.nit)} · ${esc(fondo.direccion)}<br>${esc(fondo.correo)} · ${esc(fondo.telefono)}
         </td></tr>
       </table>
       <div style="color:#94a3b8;font-size:11px;margin-top:14px">Correo automático del sistema de facturación de FMC.</div>
@@ -55,6 +60,7 @@ export async function POST(request) {
     const { response } = await requireUser();
     if (response) return response;
     const { id, to, cc, mensaje } = await request.json();
+    if (!esUUID(id)) return NextResponse.json({ error: "Falta la cuenta de cobro o su id no es válido" }, { status: 400 });
     const user = process.env.GMAIL_USER, pass = process.env.GMAIL_APP_PASSWORD;
     if (!user || !pass) return NextResponse.json({ error: "Falta configurar GMAIL_USER y GMAIL_APP_PASSWORD en Vercel" }, { status: 500 });
     const dest = lista(to);
@@ -84,7 +90,7 @@ export async function POST(request) {
       direccion: c.fondo_direccion || "", correo: c.fondo_correo || user, telefono: c.fondo_telefono || "",
       firma: c.firma_correo || "",
     };
-    const origin = new URL(request.url).origin;
+    const origin = origenApp(request);
 
     // Logo en base64 para el PDF.
     let logoBase64 = null;

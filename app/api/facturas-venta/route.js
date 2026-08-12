@@ -1,24 +1,28 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../lib/supabase";
+import { leerTodo } from "../../../lib/db";
 import { requireUser } from "../../../lib/requireUser";
 
 export const dynamic = "force-dynamic";
 
 // GET → cuentas de cobro (por cliente/intermediario) con datos para el control de IVA y reserva.
+// Paginado: el IVA por cuatrimestre se suma sobre estas filas y una lectura
+// truncada daría una cifra menor sin ningún error. Ver lib/db.js.
 export async function GET() {
   try {
     const { response } = await requireUser();
     if (response) return response;
     const sb = supabaseAdmin();
-    const { data, error } = await sb
-      .from("cuentas_cobro")
-      .select("id,consecutivo,tipo,cliente_nombre,anio,mes,cuatrimestre,fecha_elaboracion,factura_inicial,factura_final,num_facturas,valor_facturado,mutuales(nombre,es_socia)")
-      .order("anio", { ascending: false })
-      .order("mes", { ascending: false, nullsFirst: false })
-      .order("consecutivo", { ascending: false });
-    if (error) throw error;
+    const { filas } = await leerTodo(sb, "cuentas_cobro", {
+      columnas: "id,consecutivo,tipo,cliente_nombre,anio,mes,cuatrimestre,fecha_elaboracion,factura_inicial,factura_final,num_facturas,valor_facturado,mutuales(nombre,es_socia)",
+      orden: [
+        { col: "anio", opts: { ascending: false } },
+        { col: "mes", opts: { ascending: false, nullsFirst: false } },
+        { col: "consecutivo", opts: { ascending: false } },
+      ],
+    });
 
-    const cuentas = (data || []).map((c) => {
+    const cuentas = filas.map((c) => {
       const mut = c.mutuales || null;
       return {
         id: c.id, cc: c.consecutivo, tipo: c.tipo,
@@ -31,8 +35,8 @@ export async function GET() {
       };
     });
 
-    const { data: par } = await sb.from("parametros").select("*");
-    const p = Object.fromEntries((par || []).map((r) => [r.clave, Number(r.valor)]));
+    const { filas: par } = await leerTodo(sb, "parametros", { clave: "clave" });
+    const p = Object.fromEntries(par.map((r) => [r.clave, Number(r.valor)]));
     const params = { iva: p.iva ?? 0.19, admin_socia: p.admin_socia ?? 0.13, admin_no_socia: p.admin_no_socia ?? 0.17 };
 
     return NextResponse.json({ cuentas, params });

@@ -6,6 +6,13 @@ import { createClient } from "../lib/supabaseClient";
 // Cierra la sesión tras 2 horas de INACTIVIDAD (sin mouse/teclado/scroll/navegación).
 // También cierra al volver a entrar si la última actividad fue hace más de 2 horas,
 // para que la sesión no quede abierta indefinidamente entre visitas.
+//
+// ⚠️ ESTE ARCHIVO NO ES EL CONTROL: es su mitad visible. Un temporizador de
+// JavaScript sobre `localStorage` lo anula cualquiera con una línea en la consola,
+// y no se ejecuta siquiera si alguien llama a /api sin abrir la aplicación.
+// La autoridad vive en el servidor, en `lib/requireUser.js` + `lib/sesion.js`.
+// Lo que aporta este componente es que el cierre se note de inmediato en la
+// pantalla, en vez de esperar a la siguiente llamada de datos.
 const IDLE_MS = 2 * 60 * 60 * 1000; // 2 horas
 const KEY = "fmc_ultima_actividad";
 

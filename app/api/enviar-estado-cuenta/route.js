@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
 import { supabaseAdmin } from "../../../lib/supabase";
+import { leerTodo } from "../../../lib/db";
+import { esUUID } from "../../../lib/validar";
 import { logActividad } from "../../../lib/actividad";
 import { generarPDFEstadoCuenta } from "../../../lib/pdf";
 import { requireUser } from "../../../lib/requireUser";
+import { origenApp } from "../../../lib/origen";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -76,16 +79,18 @@ export async function POST(request) {
     if (!dest.length) return NextResponse.json({ error: "Indica al menos un destinatario" }, { status: 400 });
     if (!mutual_id && !cliente) return NextResponse.json({ error: "Falta el cliente" }, { status: 400 });
 
+    if (mutual_id && !esUUID(mutual_id)) return NextResponse.json({ error: "mutual_id no válido" }, { status: 400 });
+
     const sb = supabaseAdmin();
-    // Los saldos se recalculan aquí (no se confía en lo que envíe el navegador).
-    let q = sb.from("cuentas_cobro")
-      .select("consecutivo,fecha_elaboracion,fecha_vencimiento,valor_facturado,valor_recibido,saldo,mutuales(nombre,nit,dv)")
-      .gt("saldo", 0)
-      .order("fecha_vencimiento", { ascending: true, nullsFirst: false });
-    q = mutual_id ? q.eq("mutual_id", mutual_id) : q.eq("cliente_nombre", cliente);
-    const { data: rows, error } = await q;
-    if (error) throw error;
-    if (!rows || !rows.length) return NextResponse.json({ error: "Este cliente no tiene cuentas pendientes." }, { status: 400 });
+    // Los saldos se recalculan aquí (no se confía en lo que envíe el navegador),
+    // y la lectura pagina: un estado de cuenta al que le faltan filas es un
+    // cobro incorrecto enviado a un tercero. Ver lib/db.js.
+    const { filas: rows } = await leerTodo(sb, "cuentas_cobro", {
+      columnas: "consecutivo,fecha_elaboracion,fecha_vencimiento,valor_facturado,valor_recibido,saldo,mutuales(nombre,nit,dv)",
+      filtro: (q) => (mutual_id ? q.gt("saldo", 0).eq("mutual_id", mutual_id) : q.gt("saldo", 0).eq("cliente_nombre", cliente)),
+      orden: [{ col: "fecha_vencimiento", opts: { ascending: true, nullsFirst: false } }],
+    });
+    if (!rows.length) return NextResponse.json({ error: "Este cliente no tiene cuentas pendientes." }, { status: 400 });
 
     const hoy = new Date(new Date().toISOString().slice(0, 10) + "T12:00:00");
     const filas = rows.map((r) => ({
@@ -108,7 +113,7 @@ export async function POST(request) {
       firma: c.firma_correo || "",
     };
 
-    const origin = new URL(request.url).origin;
+    const origin = origenApp(request);
     let logoBase64 = null;
     try {
       const lr = await fetch(`${origin}/FMC-LOGO.jpeg`);

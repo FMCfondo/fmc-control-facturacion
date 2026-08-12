@@ -1,7 +1,13 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "../../lib/supabaseClient";
+
+// Motivos con los que SesionGuard puede traer al usuario hasta aquí.
+const MOTIVOS = {
+  sesion: "Tu sesión se cerró por seguridad (inactividad o tiempo máximo). Vuelve a ingresar.",
+  acceso: "Tu sesión ya no es válida. Vuelve a ingresar.",
+};
 
 export default function Login() {
   const router = useRouter();
@@ -9,9 +15,17 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [pass, setPass] = useState("");
   const [err, setErr] = useState("");
+  const [aviso, setAviso] = useState("");
   const [cargando, setCargando] = useState(false);
   const [pedirMfa, setPedirMfa] = useState(false);
   const [code, setCode] = useState("");
+
+  // Se lee de window en vez de `useSearchParams` para no obligar a envolver la
+  // página en un <Suspense> solo por esto.
+  useEffect(() => {
+    const motivo = new URLSearchParams(window.location.search).get("motivo");
+    if (motivo && MOTIVOS[motivo]) setAviso(MOTIVOS[motivo]);
+  }, []);
 
   async function entrar(e) {
     e.preventDefault();
@@ -50,6 +64,7 @@ export default function Login() {
           <div className="logo-box"><img src="/FMC-LOGO.jpeg" alt="FMC" onError={(e) => { e.target.style.display = "none"; }} /></div>
           <h1>Control de Facturación</h1>
           <p className="sub">Fondo Mutuo de Cobertura S.A.S</p>
+          {aviso && <div className="login-err" style={{ background: "#fffbeb", borderColor: "#fde68a", color: "#92400e" }}>{aviso}</div>}
           <label>Correo
             <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoFocus />
           </label>
