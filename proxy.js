@@ -42,9 +42,17 @@ export async function proxy(request) {
       } catch (_) { /* si falla el chequeo, no bloquear */ }
     }
 
-    // Allowlist: solo los correos autorizados pueden usar la app (defensa extra).
+    // Allowlist: solo los correos autorizados pueden usar la app.
+    // FALLA CERRADO, igual que requireUser(): si la variable no está definida no
+    // se salta la comprobación, se deniega. Antes `!permitidos.length` la anulaba
+    // entera, de modo que un entorno sin la variable aceptaba a cualquier usuario
+    // del proyecto Supabase y lo hacía en silencio.
     const permitidos = (process.env.ALLOWED_EMAILS || "").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
-    const correoOk = !permitidos.length || (user && permitidos.includes((user.email || "").toLowerCase()));
+    if (!permitidos.length) {
+      console.error("proxy: ALLOWED_EMAILS no está definida en este entorno. Se deniega el acceso (fallo cerrado). Defínela en Vercel → Settings → Environment Variables.");
+      return esLogin ? NextResponse.next() : redirigirLogin(request);
+    }
+    const correoOk = user && permitidos.includes((user.email || "").toLowerCase());
 
     if (!user && !esLogin) return redirigirLogin(request);
     if (user && !correoOk && !esLogin) return redirigirLogin(request); // correo no autorizado
