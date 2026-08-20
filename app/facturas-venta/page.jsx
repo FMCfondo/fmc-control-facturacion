@@ -1,9 +1,35 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { fmtPesos, fmtFecha } from "../../lib/format";
+import { desglosarCuenta } from "../../lib/cuenta";
 
 const CUAT = { 1: "1° cuat (Ene–Abr)", 2: "2° cuat (May–Ago)", 3: "3° cuat (Sep–Dic)" };
 const cuatDeMes = (m) => (m ? Math.ceil(m / 4) : 0);
+
+// Texto que aparece al pasar el cursor sobre la administración o la reserva.
+// Explica de dónde sale el número cuando hay una nota crédito de por medio:
+// sin esto, ver "783.000" donde la factura dice "870.000" parece un error.
+function explicar(f, concepto) {
+  const bruta = concepto === "reserva" ? f.reservaBruta : f.adminBruta;
+  const devol = concepto === "reserva" ? f.reservaDevolucion : f.adminDevolucion;
+  const neta = concepto === "reserva" ? f.reserva : f.admin;
+  const pct = Math.round((f.pctAdmin || 0) * 100);
+  if (!(devol > 0)) {
+    return `La ${concepto} real es ${fmtPesos(bruta)} (administración del ${pct}% sobre una base de ${fmtPesos(f.baseBruta)}). Sin notas crédito ni débito en esta cuenta de cobro.`;
+  }
+  return (
+    `La ${concepto} real fue ${fmtPesos(bruta)}, sobre una base de ${fmtPesos(f.baseBruta)} con administración del ${pct}%.
+` +
+    `Se registró una devolución en ventas (nota crédito) por ${fmtPesos(f.nota)} con IVA, que en base son ${fmtPesos(f.baseDevolucion)}.
+` +
+    `Eso genera un descuento en la ${concepto} a registrar de ${fmtPesos(devol)}.
+` +
+    `${concepto === "reserva" ? "Reserva" : "Administración"} neta a registrar: ${fmtPesos(neta)}.
+
+` +
+    `Nota: la devolución se aplica en esta cuenta de cobro, no en la de origen — ante la DIAN no se puede volver atrás.`
+  );
+}
 const MESES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 
 export default function FacturasVenta() {
@@ -28,13 +54,9 @@ export default function FacturasVenta() {
   const mesDe = (c) => c.mes || (c.fecha ? parseInt(String(c.fecha).slice(5, 7)) : 0);
 
   const filas = useMemo(() => cuentas.map((c) => {
-    const base = c.valor / (1 + params.iva);
-    const iva = c.valor - base;
-    const pctAdmin = c.es_socia ? params.admin_socia : params.admin_no_socia;
-    const admin = c.esMutual ? base * pctAdmin : 0;
-    const reserva = c.esMutual ? base - admin : 0;
     const cuat = c.cuatrimestreManual || cuatDeMes(mesDe(c)); // override manual o derivado
-    return { ...c, base, iva, admin, reserva, cuat, cuatAuto: cuatDeMes(mesDe(c)), mesNum: mesDe(c) };
+    // El desglose (y el descuento de la nota crédito) vive en lib/cuenta.js.
+    return { ...c, ...desglosarCuenta(c, params), cuat, cuatAuto: cuatDeMes(mesDe(c)), mesNum: mesDe(c) };
   }), [cuentas, params]);
 
   const anios = [...new Set(filas.map((f) => f.anio).filter(Boolean))].sort((a, b) => b - a);
@@ -44,7 +66,7 @@ export default function FacturasVenta() {
     switch (k) {
       case "cc": return f.cc; case "fecha": return fmtFecha(f.fecha); case "cliente": return f.cliente;
       case "rango": return f.fi && f.ff ? `${f.fi}-${f.ff}` : ""; case "valor": return f.valor;
-      case "base": return f.base; case "iva": return f.iva; case "admin": return f.admin; case "reserva": return f.reserva;
+      case "base": return f.baseBruta; case "iva": return f.ivaGenerado; case "admin": return f.admin; case "reserva": return f.reserva;
       default: return "";
     }
   };
@@ -60,11 +82,14 @@ export default function FacturasVenta() {
 
   const resumen = [1, 2, 3].map((c) => {
     const g = filtradas.filter((f) => f.cuat === c);
-    return { cuat: c, n: g.length, base: g.reduce((s, f) => s + f.base, 0), iva: g.reduce((s, f) => s + f.iva, 0), reserva: g.reduce((s, f) => s + f.reserva, 0) };
+    const sum = (k) => g.reduce((s, f) => s + (f[k] || 0), 0);
+    // El IVA se declara completo y la devolución va como línea aparte.
+    return { cuat: c, n: g.length, base: sum("baseBruta"), iva: sum("ivaGenerado"), dev: sum("ivaDevolucion"), reserva: sum("reserva") };
   });
   const suma = (k) => filtradas.reduce((s, f) => s + (f[k] || 0), 0);
-  const totFacturado = suma("valor"), totBase = suma("base");
-  const totIva = suma("iva"), totAdmin = suma("admin"), totReserva = suma("reserva");
+  const totFacturado = suma("bruto"), totNotas = suma("nota");
+  const totBase = suma("baseBruta"), totIvaDev = suma("ivaDevolucion");
+  const totIva = suma("ivaGenerado"), totAdmin = suma("admin"), totReserva = suma("reserva");
 
   async function cambiarCuat(id, val) {
     const cuatrimestre = val ? Number(val) : null;
@@ -124,12 +149,15 @@ export default function FacturasVenta() {
         <div className="kpi destacado">
           <div className="label">Total facturado (c/IVA)</div>
           <div className="value">{fmtPesos(totFacturado)}</div>
-          <div className="sub">{filtradas.length} cuenta(s) de cobro</div>
+          <div className="sub">
+            {filtradas.length} cuenta(s) de cobro
+            {totNotas > 0 && <> · <span style={{ color: "#a22d2d" }}>−{fmtPesos(totNotas)} en notas crédito</span></>}
+          </div>
         </div>
-        <div className="kpi"><div className="label">Base (sin IVA)</div><div className="value">{fmtPesos(totBase)}</div></div>
-        <div className="kpi"><div className="label">Total IVA</div><div className="value">{fmtPesos(totIva)}</div></div>
-        <div className="kpi"><div className="label">Administración</div><div className="value">{fmtPesos(totAdmin)}</div></div>
-        <div className="kpi"><div className="label">Total reserva</div><div className="value">{fmtPesos(totReserva)}</div></div>
+        <div className="kpi"><div className="label">Base (sin IVA)</div><div className="value">{fmtPesos(totBase)}</div>{totNotas > 0 && <div className="sub">causada completa</div>}</div>
+        <div className="kpi"><div className="label">IVA generado</div><div className="value">{fmtPesos(totIva)}</div>{totIvaDev > 0 && <div className="sub" style={{ color: "#a22d2d" }}>−{fmtPesos(totIvaDev)} por devoluciones</div>}</div>
+        <div className="kpi"><div className="label">Administración</div><div className="value">{fmtPesos(totAdmin)}</div>{totNotas > 0 && <div className="sub">neta de devoluciones</div>}</div>
+        <div className="kpi"><div className="label">Total reserva</div><div className="value">{fmtPesos(totReserva)}</div>{totNotas > 0 && <div className="sub">neta de devoluciones</div>}</div>
       </div>
 
       {/* IVA por cuatrimestre */}
@@ -137,8 +165,12 @@ export default function FacturasVenta() {
         {resumen.map((r) => (
           <div className={"kpi cuat-" + r.cuat} key={r.cuat}>
             <div className="label">{CUAT[r.cuat]}</div>
-            <div className="value">{fmtPesos(r.iva)}</div>
-            <div className="sub">IVA · {r.n} cuentas · base {fmtPesos(r.base)}</div>
+            <div className="value">{fmtPesos(r.iva - r.dev)}</div>
+            <div className="sub">
+              {r.dev > 0
+                ? <>generado {fmtPesos(r.iva)} · devoluciones −{fmtPesos(r.dev)}</>
+                : <>IVA · {r.n} cuentas · base {fmtPesos(r.base)}</>}
+            </div>
           </div>
         ))}
       </div>
@@ -155,7 +187,7 @@ export default function FacturasVenta() {
             <thead>
               <tr>
                 <th>CC</th><th>Fecha</th><th>Cuat.</th><th>Cliente / Mutual</th><th>Rango facturas</th>
-                <th>Valor c/IVA</th><th>Base</th><th>IVA</th><th>Admin</th><th>Reserva</th>
+                <th>Valor c/IVA</th><th>Nota crédito</th><th>Base</th><th>IVA generado</th><th>IVA devol.</th><th>Admin</th><th>Reserva</th>
               </tr>
               <tr className="filtros">
                 <th><input value={filtros.cc || ""} onChange={(e) => setF("cc", e.target.value)} placeholder="🔍" /></th>
@@ -168,14 +200,15 @@ export default function FacturasVenta() {
                 <th><input value={filtros.cliente || ""} onChange={(e) => setF("cliente", e.target.value)} placeholder="🔍" /></th>
                 <th><input value={filtros.rango || ""} onChange={(e) => setF("rango", e.target.value)} placeholder="🔍" /></th>
                 <th><input value={filtros.valor || ""} onChange={(e) => setF("valor", e.target.value)} placeholder="🔍" /></th>
+                <th></th>
                 <th><input value={filtros.base || ""} onChange={(e) => setF("base", e.target.value)} placeholder="🔍" /></th>
                 <th><input value={filtros.iva || ""} onChange={(e) => setF("iva", e.target.value)} placeholder="🔍" /></th>
-                <th></th><th></th>
+                <th></th><th></th><th></th>
               </tr>
             </thead>
             <tbody>
-              {cargando && <tr><td colSpan={10} style={{ textAlign: "center", color: "var(--gris)", padding: 24 }}>Cargando…</td></tr>}
-              {!cargando && filtradas.length === 0 && <tr><td colSpan={10} style={{ color: "var(--gris)", padding: 16 }}>Sin datos.</td></tr>}
+              {cargando && <tr><td colSpan={12} style={{ textAlign: "center", color: "var(--gris)", padding: 24 }}>Cargando…</td></tr>}
+              {!cargando && filtradas.length === 0 && <tr><td colSpan={12} style={{ color: "var(--gris)", padding: 16 }}>Sin datos.</td></tr>}
               {filtradas.map((f) => (
                 <tr key={f.id} className={"mes-row-" + f.mesNum}>
                   <td>{f.cc}</td>
@@ -188,11 +221,13 @@ export default function FacturasVenta() {
                   </td>
                   <td>{f.cliente}</td>
                   <td>{f.fi && f.ff ? `${f.fi}–${f.ff}` : "—"}</td>
-                  <td className="num">{fmtPesos(f.valor)}</td>
-                  <td className="num">{fmtPesos(f.base)}</td>
-                  <td className={"num colcuat ivastrong cuat-" + f.cuat}>{fmtPesos(f.iva)}</td>
-                  <td className={"num colcuat cuat-" + f.cuat}>{f.esMutual ? fmtPesos(f.admin) : "—"}</td>
-                  <td className={"num colcuat cuat-" + f.cuat}><b>{f.esMutual ? fmtPesos(f.reserva) : "—"}</b></td>
+                  <td className="num">{fmtPesos(f.bruto)}</td>
+                  <td className="num" style={{ color: f.nota > 0 ? "#a22d2d" : "var(--gris)" }}>{f.nota > 0 ? "−" + fmtPesos(f.nota) : "—"}</td>
+                  <td className="num">{fmtPesos(f.baseBruta)}</td>
+                  <td className={"num colcuat ivastrong cuat-" + f.cuat}>{fmtPesos(f.ivaGenerado)}</td>
+                  <td className="num" style={{ color: f.ivaDevolucion > 0 ? "#a22d2d" : "var(--gris)" }}>{f.ivaDevolucion > 0 ? "−" + fmtPesos(f.ivaDevolucion) : "—"}</td>
+                  <td className={"num colcuat cuat-" + f.cuat} title={f.esMutual ? explicar(f, "administración") : undefined}>{f.esMutual ? fmtPesos(f.admin) : "—"}</td>
+                  <td className={"num colcuat cuat-" + f.cuat} title={f.esMutual ? explicar(f, "reserva") : undefined}><b>{f.esMutual ? fmtPesos(f.reserva) : "—"}</b></td>
                 </tr>
               ))}
             </tbody>

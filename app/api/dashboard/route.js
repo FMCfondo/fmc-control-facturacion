@@ -15,7 +15,7 @@ export async function GET() {
 
     const [cc, pg, par, mut] = await Promise.all([
       sb.from("cuentas_cobro")
-        .select("id,consecutivo,tipo,mutual_id,cliente_nombre,mes,anio,fecha_elaboracion,fecha_vencimiento,num_facturas,valor_facturado,valor_recibido,saldo,estado,mutuales(nombre,nombre_corto,es_socia)")
+        .select("id,consecutivo,tipo,mutual_id,cliente_nombre,mes,anio,fecha_elaboracion,fecha_vencimiento,num_facturas,valor_facturado,valor_recibido,saldo,estado,anticipos,mutuales(nombre,nombre_corto,es_socia)")
         .order("anio", { ascending: true }),
       sb.from("pagos").select("cuenta_cobro_id,fecha,valor"),
       sb.from("parametros").select("*"),
@@ -34,6 +34,8 @@ export async function GET() {
         anio: c.anio, mes: c.mes, fecha: c.fecha_elaboracion, vence: c.fecha_vencimiento,
         num: c.num_facturas, estado: c.estado,
         valor: Number(c.valor_facturado) || 0,
+        // Saldo a favor por nota crédito: reduce base, IVA, administración y reserva.
+        anticipos: Number(c.anticipos) || 0,
         recibido: Number(c.valor_recibido) || 0,
         saldo: Number(c.saldo) || 0,
       };
