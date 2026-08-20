@@ -57,15 +57,19 @@ export default function Dashboard() {
   const sel = useMemo(() => filas.filter((f) => aplica(f)), [filas, aplica]);
 
   const suma = (arr, k) => arr.reduce((s, x) => s + (x[k] || 0), 0);
+  // El Dashboard es la vista ECONÓMICA: todo NETO de notas crédito, así la
+  // composición cuadra (base = administración + reserva). El detalle fiscal
+  // —IVA causado completo y devoluciones aparte— está en Facturas de venta.
   const tot = {
-    valor: suma(sel, "valor"), base: suma(sel, "base"), iva: suma(sel, "iva"),
+    valor: suma(sel, "bruto"), nota: suma(sel, "nota"), neto: suma(sel, "neto"),
+    base: suma(sel, "baseNeta"), iva: suma(sel, "ivaNeto"),
     admin: suma(sel, "admin"), reserva: suma(sel, "reserva"),
     recibido: suma(sel, "recibido"), saldo: suma(sel, "saldo"),
   };
   // "num" puede ser null en el histórico migrado (CC 1–11): se marca en la nota.
   const conNum = sel.filter((f) => f.num);
   const numFacturas = suma(conNum, "num");
-  const pctRecaudo = tot.valor > 0 ? (tot.recibido / tot.valor) * 100 : 0;
+  const pctRecaudo = tot.neto > 0 ? (tot.recibido / tot.neto) * 100 : 0;
 
   // Comparativo con el año anterior (mismo mes/mutual si están filtrados).
   const anioAnt = fAnio ? String(Number(fAnio) - 1) : "";
@@ -285,7 +289,7 @@ export default function Dashboard() {
               <span className="mono">{fmtPesos(c.v)}</span>
             </div>
           ))}
-          <p className="nota">Base = administración + reserva individual. El IVA se declara por cuatrimestre (ver Facturas de venta).</p>
+          <p className="nota">Base = administración + reserva individual. Cifras <b>netas</b> de notas crédito{tot.nota > 0 ? ` (${fmtPesos(tot.nota)} en el período)` : ""}. El IVA se declara completo y por cuatrimestre — ver Facturas de venta.</p>
           <h2 style={{ marginTop: 18 }}>Estado de las cuentas</h2>
           <div className="estados">
             {estados.map((s) => (
