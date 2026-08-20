@@ -19,7 +19,7 @@ export async function GET() {
 
     const [cc, pg, par, mut] = await Promise.all([
       leerTodo(sb, "cuentas_cobro", {
-        columnas: "id,consecutivo,tipo,mutual_id,cliente_nombre,mes,anio,fecha_elaboracion,fecha_vencimiento,num_facturas,valor_facturado,valor_recibido,saldo,estado,mutuales(nombre,nombre_corto,es_socia)",
+        columnas: "id,consecutivo,tipo,mutual_id,cliente_nombre,mes,anio,fecha_elaboracion,fecha_vencimiento,num_facturas,valor_facturado,valor_recibido,saldo,estado,anticipos,mutuales(nombre,nombre_corto,es_socia)",
         orden: [{ col: "anio", opts: { ascending: true } }],
       }),
       leerTodo(sb, "pagos", { columnas: "cuenta_cobro_id,fecha,valor" }),
@@ -38,6 +38,8 @@ export async function GET() {
         anio: c.anio, mes: c.mes, fecha: c.fecha_elaboracion, vence: c.fecha_vencimiento,
         num: c.num_facturas, estado: c.estado,
         valor: Number(c.valor_facturado) || 0,
+        // Saldo a favor por nota crédito: reduce base, IVA, administración y reserva.
+        anticipos: Number(c.anticipos) || 0,
         recibido: Number(c.valor_recibido) || 0,
         saldo: Number(c.saldo) || 0,
       };

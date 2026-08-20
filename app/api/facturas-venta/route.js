@@ -14,7 +14,7 @@ export async function GET() {
     if (response) return response;
     const sb = supabaseAdmin();
     const { filas } = await leerTodo(sb, "cuentas_cobro", {
-      columnas: "id,consecutivo,tipo,cliente_nombre,anio,mes,cuatrimestre,fecha_elaboracion,factura_inicial,factura_final,num_facturas,valor_facturado,mutuales(nombre,es_socia)",
+      columnas: "id,consecutivo,tipo,cliente_nombre,anio,mes,cuatrimestre,fecha_elaboracion,factura_inicial,factura_final,num_facturas,valor_facturado,anticipos,mutuales(nombre,es_socia)",
       orden: [
         { col: "anio", opts: { ascending: false } },
         { col: "mes", opts: { ascending: false, nullsFirst: false } },
@@ -32,6 +32,8 @@ export async function GET() {
         anio: c.anio, mes: c.mes, cuatrimestreManual: c.cuatrimestre, fecha: c.fecha_elaboracion,
         fi: c.factura_inicial, ff: c.factura_final, num: c.num_facturas,
         valor: Number(c.valor_facturado) || 0,
+        // Saldo a favor por nota crédito: reduce base, IVA, administración y reserva.
+        anticipos: Number(c.anticipos) || 0,
       };
     });
 

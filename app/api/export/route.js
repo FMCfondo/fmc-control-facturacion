@@ -12,6 +12,7 @@ const TABLAS = [
   { nombre: "cuentas_cobro", clave: "id", orden: [{ col: "consecutivo" }] },
   { nombre: "facturas_siigo", clave: "id", orden: [{ col: "consecutivo" }] },
   { nombre: "pagos", clave: "id", orden: [{ col: "fecha" }] },
+  { nombre: "notas_ajuste", clave: "id", orden: [{ col: "fecha" }] },
   { nombre: "mutuales", clave: "id", orden: [{ col: "nombre" }] },
   { nombre: "items_cuenta_cobro", clave: "id", orden: [] },
   { nombre: "config", clave: "clave", orden: [] },

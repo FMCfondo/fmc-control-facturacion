@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { fmtPesos } from "../../lib/format";
+import { desglosarCuenta } from "../../lib/cuenta";
 
 const MESES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 const HOY = () => new Date(new Date().toISOString().slice(0, 10) + "T12:00:00");
@@ -29,19 +30,15 @@ export default function Dashboard() {
   }, []);
 
   // Filas con los cálculos contables (base / IVA / admin / reserva).
+  // El desglose vive en lib/cuenta.js — lo comparte con Facturas de venta, y ahí
+  // se descuenta la nota crédito antes de partir la base.
   const filas = useMemo(() => {
     if (!d) return [];
-    const { iva, admin_socia, admin_no_socia } = d.params;
-    return d.cuentas.map((c) => {
-      const base = c.valor / (1 + iva);
-      const pct = c.es_socia ? admin_socia : admin_no_socia;
-      const admin = c.esMutual ? base * pct : 0;
-      return {
-        ...c,
-        mesNum: c.mes || (c.fecha ? parseInt(String(c.fecha).slice(5, 7)) : 0),
-        base, iva: c.valor - base, admin, reserva: c.esMutual ? base - admin : 0,
-      };
-    });
+    return d.cuentas.map((c) => ({
+      ...c,
+      mesNum: c.mes || (c.fecha ? parseInt(String(c.fecha).slice(5, 7)) : 0),
+      ...desglosarCuenta(c, d.params),
+    }));
   }, [d]);
 
   const anios = useMemo(() => [...new Set(filas.map((f) => f.anio).filter(Boolean))].sort((a, b) => b - a), [filas]);
@@ -60,15 +57,19 @@ export default function Dashboard() {
   const sel = useMemo(() => filas.filter((f) => aplica(f)), [filas, aplica]);
 
   const suma = (arr, k) => arr.reduce((s, x) => s + (x[k] || 0), 0);
+  // El Dashboard es la vista ECONÓMICA: todo NETO de notas crédito, así la
+  // composición cuadra (base = administración + reserva). El detalle fiscal
+  // —IVA causado completo y devoluciones aparte— está en Facturas de venta.
   const tot = {
-    valor: suma(sel, "valor"), base: suma(sel, "base"), iva: suma(sel, "iva"),
+    valor: suma(sel, "bruto"), nota: suma(sel, "nota"), neto: suma(sel, "neto"),
+    base: suma(sel, "baseNeta"), iva: suma(sel, "ivaNeto"),
     admin: suma(sel, "admin"), reserva: suma(sel, "reserva"),
     recibido: suma(sel, "recibido"), saldo: suma(sel, "saldo"),
   };
   // "num" puede ser null en el histórico migrado (CC 1–11): se marca en la nota.
   const conNum = sel.filter((f) => f.num);
   const numFacturas = suma(conNum, "num");
-  const pctRecaudo = tot.valor > 0 ? (tot.recibido / tot.valor) * 100 : 0;
+  const pctRecaudo = tot.neto > 0 ? (tot.recibido / tot.neto) * 100 : 0;
 
   // Comparativo con el año anterior (mismo mes/mutual si están filtrados).
   const anioAnt = fAnio ? String(Number(fAnio) - 1) : "";
@@ -288,7 +289,7 @@ export default function Dashboard() {
               <span className="mono">{fmtPesos(c.v)}</span>
             </div>
           ))}
-          <p className="nota">Base = administración + reserva individual. El IVA se declara por cuatrimestre (ver Facturas de venta).</p>
+          <p className="nota">Base = administración + reserva individual. Cifras <b>netas</b> de notas crédito{tot.nota > 0 ? ` (${fmtPesos(tot.nota)} en el período)` : ""}. El IVA se declara completo y por cuatrimestre — ver Facturas de venta.</p>
           <h2 style={{ marginTop: 18 }}>Estado de las cuentas</h2>
           <div className="estados">
             {estados.map((s) => (
