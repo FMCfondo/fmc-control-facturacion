@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { fmtPesos, fmtFecha } from "../../lib/format";
+import { desglosarCuenta } from "../../lib/cuenta";
 
 const CUAT = { 1: "1° cuat (Ene–Abr)", 2: "2° cuat (May–Ago)", 3: "3° cuat (Sep–Dic)" };
 const cuatDeMes = (m) => (m ? Math.ceil(m / 4) : 0);
@@ -28,13 +29,9 @@ export default function FacturasVenta() {
   const mesDe = (c) => c.mes || (c.fecha ? parseInt(String(c.fecha).slice(5, 7)) : 0);
 
   const filas = useMemo(() => cuentas.map((c) => {
-    const base = c.valor / (1 + params.iva);
-    const iva = c.valor - base;
-    const pctAdmin = c.es_socia ? params.admin_socia : params.admin_no_socia;
-    const admin = c.esMutual ? base * pctAdmin : 0;
-    const reserva = c.esMutual ? base - admin : 0;
     const cuat = c.cuatrimestreManual || cuatDeMes(mesDe(c)); // override manual o derivado
-    return { ...c, base, iva, admin, reserva, cuat, cuatAuto: cuatDeMes(mesDe(c)), mesNum: mesDe(c) };
+    // El desglose (y el descuento de la nota crédito) vive en lib/cuenta.js.
+    return { ...c, ...desglosarCuenta(c, params), cuat, cuatAuto: cuatDeMes(mesDe(c)), mesNum: mesDe(c) };
   }), [cuentas, params]);
 
   const anios = [...new Set(filas.map((f) => f.anio).filter(Boolean))].sort((a, b) => b - a);
@@ -63,7 +60,7 @@ export default function FacturasVenta() {
     return { cuat: c, n: g.length, base: g.reduce((s, f) => s + f.base, 0), iva: g.reduce((s, f) => s + f.iva, 0), reserva: g.reduce((s, f) => s + f.reserva, 0) };
   });
   const suma = (k) => filtradas.reduce((s, f) => s + (f[k] || 0), 0);
-  const totFacturado = suma("valor"), totBase = suma("base");
+  const totFacturado = suma("bruto"), totNotas = suma("nota"), totBase = suma("base");
   const totIva = suma("iva"), totAdmin = suma("admin"), totReserva = suma("reserva");
 
   async function cambiarCuat(id, val) {
@@ -124,9 +121,12 @@ export default function FacturasVenta() {
         <div className="kpi destacado">
           <div className="label">Total facturado (c/IVA)</div>
           <div className="value">{fmtPesos(totFacturado)}</div>
-          <div className="sub">{filtradas.length} cuenta(s) de cobro</div>
+          <div className="sub">
+            {filtradas.length} cuenta(s) de cobro
+            {totNotas > 0 && <> · <span style={{ color: "#a22d2d" }}>−{fmtPesos(totNotas)} en notas crédito</span></>}
+          </div>
         </div>
-        <div className="kpi"><div className="label">Base (sin IVA)</div><div className="value">{fmtPesos(totBase)}</div></div>
+        <div className="kpi"><div className="label">Base (sin IVA)</div><div className="value">{fmtPesos(totBase)}</div>{totNotas > 0 && <div className="sub">neta de notas crédito</div>}</div>
         <div className="kpi"><div className="label">Total IVA</div><div className="value">{fmtPesos(totIva)}</div></div>
         <div className="kpi"><div className="label">Administración</div><div className="value">{fmtPesos(totAdmin)}</div></div>
         <div className="kpi"><div className="label">Total reserva</div><div className="value">{fmtPesos(totReserva)}</div></div>
@@ -155,7 +155,7 @@ export default function FacturasVenta() {
             <thead>
               <tr>
                 <th>CC</th><th>Fecha</th><th>Cuat.</th><th>Cliente / Mutual</th><th>Rango facturas</th>
-                <th>Valor c/IVA</th><th>Base</th><th>IVA</th><th>Admin</th><th>Reserva</th>
+                <th>Valor c/IVA</th><th>Nota crédito</th><th>Base</th><th>IVA</th><th>Admin</th><th>Reserva</th>
               </tr>
               <tr className="filtros">
                 <th><input value={filtros.cc || ""} onChange={(e) => setF("cc", e.target.value)} placeholder="🔍" /></th>
@@ -168,14 +168,15 @@ export default function FacturasVenta() {
                 <th><input value={filtros.cliente || ""} onChange={(e) => setF("cliente", e.target.value)} placeholder="🔍" /></th>
                 <th><input value={filtros.rango || ""} onChange={(e) => setF("rango", e.target.value)} placeholder="🔍" /></th>
                 <th><input value={filtros.valor || ""} onChange={(e) => setF("valor", e.target.value)} placeholder="🔍" /></th>
+                <th></th>
                 <th><input value={filtros.base || ""} onChange={(e) => setF("base", e.target.value)} placeholder="🔍" /></th>
                 <th><input value={filtros.iva || ""} onChange={(e) => setF("iva", e.target.value)} placeholder="🔍" /></th>
                 <th></th><th></th>
               </tr>
             </thead>
             <tbody>
-              {cargando && <tr><td colSpan={10} style={{ textAlign: "center", color: "var(--gris)", padding: 24 }}>Cargando…</td></tr>}
-              {!cargando && filtradas.length === 0 && <tr><td colSpan={10} style={{ color: "var(--gris)", padding: 16 }}>Sin datos.</td></tr>}
+              {cargando && <tr><td colSpan={11} style={{ textAlign: "center", color: "var(--gris)", padding: 24 }}>Cargando…</td></tr>}
+              {!cargando && filtradas.length === 0 && <tr><td colSpan={11} style={{ color: "var(--gris)", padding: 16 }}>Sin datos.</td></tr>}
               {filtradas.map((f) => (
                 <tr key={f.id} className={"mes-row-" + f.mesNum}>
                   <td>{f.cc}</td>
@@ -188,7 +189,8 @@ export default function FacturasVenta() {
                   </td>
                   <td>{f.cliente}</td>
                   <td>{f.fi && f.ff ? `${f.fi}–${f.ff}` : "—"}</td>
-                  <td className="num">{fmtPesos(f.valor)}</td>
+                  <td className="num">{fmtPesos(f.bruto)}</td>
+                  <td className="num" style={{ color: f.nota > 0 ? "#a22d2d" : "var(--gris)" }}>{f.nota > 0 ? "−" + fmtPesos(f.nota) : "—"}</td>
                   <td className="num">{fmtPesos(f.base)}</td>
                   <td className={"num colcuat ivastrong cuat-" + f.cuat}>{fmtPesos(f.iva)}</td>
                   <td className={"num colcuat cuat-" + f.cuat}>{f.esMutual ? fmtPesos(f.admin) : "—"}</td>

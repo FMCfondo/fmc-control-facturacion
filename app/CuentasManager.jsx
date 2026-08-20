@@ -412,7 +412,7 @@ export default function CuentasManager({ cuentas, mutuales }) {
               <label>Factura final<input type="number" value={form.factura_final} onChange={(e) => set("factura_final", e.target.value)} /></label>
               <label>Valor facturado<input type="number" step="0.01" value={form.valor_facturado} onChange={(e) => set("valor_facturado", e.target.value)} /></label>
               <label>Valor recibido<input type="number" step="0.01" value={form.valor_recibido} onChange={(e) => set("valor_recibido", e.target.value)} /></label>
-              <label>Anticipos / saldo a favor<input type="number" step="0.01" value={form.anticipos} onChange={(e) => set("anticipos", e.target.value)} /></label>
+              <label title="Saldo a favor por nota crédito. Reduce el total Y su parte de IVA, administración y reserva.">Nota crédito / saldo a favor<input type="number" step="0.01" value={form.anticipos} onChange={(e) => set("anticipos", e.target.value)} /></label>
               <label>Estado
                 <select value={form.estado} onChange={(e) => set("estado", e.target.value)}>
                   <option value="pendiente">Pendiente</option>

@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { fmtPesos } from "../../lib/format";
+import { desglosarCuenta } from "../../lib/cuenta";
 
 const MESES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 const HOY = () => new Date(new Date().toISOString().slice(0, 10) + "T12:00:00");
@@ -29,19 +30,15 @@ export default function Dashboard() {
   }, []);
 
   // Filas con los cálculos contables (base / IVA / admin / reserva).
+  // El desglose vive en lib/cuenta.js — lo comparte con Facturas de venta, y ahí
+  // se descuenta la nota crédito antes de partir la base.
   const filas = useMemo(() => {
     if (!d) return [];
-    const { iva, admin_socia, admin_no_socia } = d.params;
-    return d.cuentas.map((c) => {
-      const base = c.valor / (1 + iva);
-      const pct = c.es_socia ? admin_socia : admin_no_socia;
-      const admin = c.esMutual ? base * pct : 0;
-      return {
-        ...c,
-        mesNum: c.mes || (c.fecha ? parseInt(String(c.fecha).slice(5, 7)) : 0),
-        base, iva: c.valor - base, admin, reserva: c.esMutual ? base - admin : 0,
-      };
-    });
+    return d.cuentas.map((c) => ({
+      ...c,
+      mesNum: c.mes || (c.fecha ? parseInt(String(c.fecha).slice(5, 7)) : 0),
+      ...desglosarCuenta(c, d.params),
+    }));
   }, [d]);
 
   const anios = useMemo(() => [...new Set(filas.map((f) => f.anio).filter(Boolean))].sort((a, b) => b - a), [filas]);
