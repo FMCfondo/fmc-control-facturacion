@@ -56,6 +56,14 @@ export default function CuentasManager({ cuentas, mutuales }) {
   const [guardando, setGuardando] = useState(false);
   const [modalItems, setModalItems] = useState([]); // ítems para cuentas irregulares
 
+  // Notas crédito / débito
+  const [notasCuenta, setNotasCuenta] = useState(null);
+  const [notas, setNotas] = useState([]);
+  const NOTA_VACIA = { tipo: "credito", factura_origen: "", valor: "", motivo: "", fecha: "" };
+  const [notaForm, setNotaForm] = useState(NOTA_VACIA);
+  const [notaOrigen, setNotaOrigen] = useState(null); // datos de la factura de origen
+  const [notaMsg, setNotaMsg] = useState("");
+
   // Pagos
   const [pagosCuenta, setPagosCuenta] = useState(null); // cuenta seleccionada
   const [pagos, setPagos] = useState([]);
@@ -193,6 +201,53 @@ export default function CuentasManager({ cuentas, mutuales }) {
     }
   }
 
+  // ─── Notas crédito / débito ───
+  async function abrirNotas(c) {
+    setNotasCuenta(c); setNotaMsg(""); setNotas([]); setNotaOrigen(null);
+    setNotaForm({ ...NOTA_VACIA, fecha: new Date().toISOString().slice(0, 10) });
+    const r = await fetch(`/api/notas?cuenta_cobro_id=${c.id}`);
+    const d = await r.json();
+    if (!r.ok) { setNotaMsg("✗ " + d.error); return; }
+    setNotas(d.notas || []);
+  }
+
+  // Al escribir el número de factura se consulta el origen: de ahí salen el valor
+  // exacto a reversar y los porcentajes que regían cuando se facturó.
+  async function buscarOrigen(num) {
+    setNotaOrigen(null); setNotaMsg("");
+    if (!num) return;
+    const r = await fetch(`/api/notas?factura=${encodeURIComponent(num)}`);
+    const d = await r.json();
+    if (!r.ok) { setNotaMsg("✗ " + d.error); return; }
+    setNotaOrigen(d.origen);
+    // El valor se precarga, pero se puede cambiar (anulación parcial).
+    setNotaForm((f) => ({ ...f, valor: f.valor || String(d.origen.valor) }));
+  }
+
+  async function agregarNota(e) {
+    e.preventDefault(); setNotaMsg("");
+    try {
+      const res = await fetch("/api/notas", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cuenta_cobro_id: notasCuenta.id, ...notaForm }),
+      });
+      const out = await res.json();
+      if (!res.ok) throw new Error(out.error);
+      const r = await fetch(`/api/notas?cuenta_cobro_id=${notasCuenta.id}`);
+      setNotas((await r.json()).notas || []);
+      setNotaForm({ ...NOTA_VACIA, fecha: notaForm.fecha }); setNotaOrigen(null);
+      recargar();
+    } catch (e) { setNotaMsg("✗ " + e.message); }
+  }
+
+  async function borrarNota(id) {
+    if (!confirm("¿Borrar esta nota? El saldo de la cuenta se recalculará.")) return;
+    await fetch("/api/notas", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) });
+    const r = await fetch(`/api/notas?cuenta_cobro_id=${notasCuenta.id}`);
+    setNotas((await r.json()).notas || []);
+    recargar();
+  }
+
   // ─── Pagos ───
   async function abrirPagos(c) {
     setPagosCuenta(c); setPagoMsg(""); setPagos([]);
@@ -250,7 +305,7 @@ export default function CuentasManager({ cuentas, mutuales }) {
   const pendientes = lista.filter((c) => c.estado !== "pago").length;
 
   // Valor de cada columna (para filtrar y ordenar).
-  const NUMERICAS = ["consecutivo", "mes", "anio", "facturado", "recibido", "saldo"];
+  const NUMERICAS = ["consecutivo", "mes", "anio", "facturado", "notas", "recibido", "saldo"];
   const valorCol = (c, k) => {
     switch (k) {
       case "consecutivo": return c.consecutivo ?? "";
@@ -261,6 +316,8 @@ export default function CuentasManager({ cuentas, mutuales }) {
       case "fecha": return fmtFecha(c.fecha_elaboracion);
       case "rango": return c.factura_inicial && c.factura_final ? `${c.factura_inicial}-${c.factura_final}` : "";
       case "facturado": return Number(c.valor_facturado) || 0;
+      // Neto de notas, mantenido por trigger desde `notas_ajuste`.
+      case "notas": return Number(c.anticipos) || 0;
       case "recibido": return Number(c.valor_recibido) || 0;
       case "saldo": return Number(c.saldo) || 0;
       case "estado": return c.estado || "";
@@ -315,6 +372,7 @@ export default function CuentasManager({ cuentas, mutuales }) {
               <ThSort campo="fecha" orden={orden} onOrdenar={ordenarPor}>Fecha</ThSort>
               <ThSort campo="rango" orden={orden} onOrdenar={ordenarPor}>Rango facturas</ThSort>
               <ThSort campo="facturado" orden={orden} onOrdenar={ordenarPor}>Facturado</ThSort>
+              <ThSort campo="notas" orden={orden} onOrdenar={ordenarPor}>Notas cr./db.</ThSort>
               <ThSort campo="recibido" orden={orden} onOrdenar={ordenarPor}>Recibido</ThSort>
               <ThSort campo="saldo" orden={orden} onOrdenar={ordenarPor}>Saldo</ThSort>
               <ThSort campo="estado" orden={orden} onOrdenar={ordenarPor}>Estado</ThSort>
@@ -333,6 +391,7 @@ export default function CuentasManager({ cuentas, mutuales }) {
               <th><input aria-label="Filtrar por fecha" value={filtros.fecha || ""} onChange={(e) => setF("fecha", e.target.value)} placeholder="dd/mm/aaaa" /></th>
               <th><input aria-label="Filtrar por rango de facturas" value={filtros.rango || ""} onChange={(e) => setF("rango", e.target.value)} placeholder="🔍" /></th>
               <th><input aria-label="Filtrar por valor facturado" value={filtros.facturado || ""} onChange={(e) => setF("facturado", e.target.value)} placeholder="🔍" /></th>
+              <th></th>
               <th><input aria-label="Filtrar por valor recibido" value={filtros.recibido || ""} onChange={(e) => setF("recibido", e.target.value)} placeholder="🔍" /></th>
               <th><input aria-label="Filtrar por saldo" value={filtros.saldo || ""} onChange={(e) => setF("saldo", e.target.value)} placeholder="🔍" /></th>
               <th>
@@ -354,6 +413,15 @@ export default function CuentasManager({ cuentas, mutuales }) {
                 <td>{fmtFecha(c.fecha_elaboracion)}</td>
                 <td>{c.factura_inicial && c.factura_final ? `${c.factura_inicial}–${c.factura_final}` : "—"}</td>
                 <td className="num">{fmtPesos(c.valor_facturado)}</td>
+                <td className="num">
+                  <button className="mini" onClick={() => abrirNotas(c)}
+                    title={Number(c.anticipos) ? "Ver el detalle y el motivo de las notas" : "Registrar una nota crédito o débito"}
+                    style={{ color: Number(c.anticipos) > 0 ? "#a22d2d" : (Number(c.anticipos) < 0 ? "#166534" : undefined) }}>
+                    {Number(c.anticipos)
+                      ? (Number(c.anticipos) > 0 ? "−" : "+") + fmtPesos(Math.abs(Number(c.anticipos)))
+                      : "+ Nota"}
+                  </button>
+                </td>
                 <td className="num">{fmtPesos(c.valor_recibido)}</td>
                 <td className="num">{fmtPesos(c.saldo)}</td>
                 <td>
@@ -372,7 +440,7 @@ export default function CuentasManager({ cuentas, mutuales }) {
               </tr>
             ))}
             {filtradas.length === 0 && (
-              <tr><td colSpan={12} style={{ textAlign: "center", color: "var(--gris)", padding: 20 }}>
+              <tr><td colSpan={13} style={{ textAlign: "center", color: "var(--gris)", padding: 20 }}>
                 {lista.length === 0 ? "Aún no hay cuentas de cobro." : "Ninguna cuenta coincide con el filtro."}
               </td></tr>
             )}
@@ -412,7 +480,11 @@ export default function CuentasManager({ cuentas, mutuales }) {
               <label>Factura final<input type="number" value={form.factura_final} onChange={(e) => set("factura_final", e.target.value)} /></label>
               <label>Valor facturado<input type="number" step="0.01" value={form.valor_facturado} onChange={(e) => set("valor_facturado", e.target.value)} /></label>
               <label>Valor recibido<input type="number" step="0.01" value={form.valor_recibido} onChange={(e) => set("valor_recibido", e.target.value)} /></label>
-              <label title="Saldo a favor por nota crédito. Reduce el total Y su parte de IVA, administración y reserva.">Nota crédito / saldo a favor<input type="number" step="0.01" value={form.anticipos} onChange={(e) => set("anticipos", e.target.value)} /></label>
+              <label title="Lo calcula el sistema a partir de las notas registradas. Para cambiarlo, usa el botón de la columna «Notas cr./db.» del tablero.">Notas crédito / débito
+                <input readOnly value={Number(form.anticipos)
+                  ? fmtPesos(Math.abs(Number(form.anticipos))) + (Number(form.anticipos) > 0 ? " a favor" : " en contra")
+                  : "sin notas"} />
+              </label>
               <label>Estado
                 <select value={form.estado} onChange={(e) => set("estado", e.target.value)}>
                   <option value="pendiente">Pendiente</option>
@@ -455,6 +527,73 @@ export default function CuentasManager({ cuentas, mutuales }) {
               <button type="submit" className="btn-primary" disabled={guardando}>{guardando ? "Guardando…" : "Guardar"}</button>
             </div>
           </form>
+        </div>
+      )}
+
+      {notasCuenta && (
+        <div className="modal-bg" onClick={(e) => e.target === e.currentTarget && setNotasCuenta(null)}>
+          <div className="modal">
+            <h3>Notas crédito / débito — CC #{notasCuenta.consecutivo} · {nombreCliente(notasCuenta)}</h3>
+            <p className="hint" style={{ marginTop: 4 }}>
+              Una nota se aplica en <b>esta</b> cuenta de cobro, no en la de origen: ante la DIAN no se puede volver atrás.
+              Si indicas la factura que se anula, el sistema toma de ella el valor y los porcentajes que regían entonces.
+            </p>
+
+            {notas.length > 0 ? (
+              <table style={{ marginTop: 12 }}>
+                <thead><tr><th>Fecha</th><th>Tipo</th><th>Factura origen</th><th>Valor</th><th>Motivo</th><th></th></tr></thead>
+                <tbody>
+                  {notas.map((n) => (
+                    <tr key={n.id}>
+                      <td>{fmtFecha(n.fecha)}</td>
+                      <td><span className="tag">{n.tipo}</span></td>
+                      <td>{n.factura_origen ?? "—"}</td>
+                      <td className="num" style={{ color: n.tipo === "credito" ? "#a22d2d" : "#166534" }}>
+                        {n.tipo === "credito" ? "−" : "+"}{fmtPesos(n.valor)}
+                      </td>
+                      <td>{n.motivo}</td>
+                      <td><button className="del" style={{ padding: "2px 8px" }} onClick={() => borrarNota(n.id)}>✕</button></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : <p className="hint" style={{ margin: "12px 0" }}>Esta cuenta de cobro no tiene notas.</p>}
+
+            <form onSubmit={agregarNota} style={{ marginTop: 14, display: "grid", gap: 8 }}>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <select value={notaForm.tipo} onChange={(e) => setNotaForm({ ...notaForm, tipo: e.target.value })}>
+                  <option value="credito">Nota crédito (descuenta)</option>
+                  <option value="debito">Nota débito (aumenta)</option>
+                </select>
+                <input type="date" value={notaForm.fecha} onChange={(e) => setNotaForm({ ...notaForm, fecha: e.target.value })} required />
+                <input placeholder="N° factura que se anula" value={notaForm.factura_origen} style={{ width: 190 }}
+                  onChange={(e) => setNotaForm({ ...notaForm, factura_origen: e.target.value.replace(/\D/g, "") })}
+                  onBlur={(e) => buscarOrigen(e.target.value)} />
+                <input type="number" step="0.01" placeholder="Valor c/IVA" value={notaForm.valor} style={{ width: 150 }}
+                  onChange={(e) => setNotaForm({ ...notaForm, valor: e.target.value })} required />
+              </div>
+              <input placeholder="Motivo: qué pasó y cuándo (obligatorio)" value={notaForm.motivo}
+                onChange={(e) => setNotaForm({ ...notaForm, motivo: e.target.value })} required />
+
+              {notaOrigen && (
+                <div className="ok-box" style={{ fontSize: 12.5 }}>
+                  Factura <b>{notaOrigen.factura}</b> · {notaOrigen.nombre || notaOrigen.cedula} · {fmtPesos(notaOrigen.valor)} c/IVA<br />
+                  Cuenta de cobro de origen <b>#{notaOrigen.cuenta_origen ?? "—"}</b> ({notaOrigen.cliente_origen || "—"}) del {fmtFecha(notaOrigen.fecha_origen) || "—"}<br />
+                  {notaOrigen.pct_admin_origen
+                    ? <>Se reversará con los porcentajes de esa fecha: administración <b>{(notaOrigen.pct_admin_origen * 100).toFixed(2)}%</b>, IVA <b>{((notaOrigen.iva_pct_origen || 0) * 100).toFixed(0)}%</b>.</>
+                    : <>Esa cuenta de cobro no guarda su desglose (histórico migrado): se usarán los porcentajes vigentes.</>}
+                </div>
+              )}
+
+              <div><button type="submit" className="btn-primary">+ Registrar nota</button></div>
+            </form>
+            {notaMsg && <div className="err" style={{ marginTop: 10 }}>{notaMsg}</div>}
+
+            <div className="modal-acc">
+              <span style={{ flex: 1 }} />
+              <button type="button" className="logout" onClick={() => setNotasCuenta(null)}>Cerrar</button>
+            </div>
+          </div>
         </div>
       )}
 

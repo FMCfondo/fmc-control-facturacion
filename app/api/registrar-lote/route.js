@@ -8,7 +8,8 @@ const CAMPOS_CUENTA = [
   "consecutivo", "tipo", "mutual_id", "cliente_nombre", "cliente_nit", "cliente_direccion",
   "cliente_correo", "mes", "anio", "fecha_elaboracion", "fecha_vencimiento", "factura_inicial",
   "factura_final", "num_facturas", "valor_facturado", "valor_recibido", "reserva_individual",
-  "administracion", "iva", "anticipos", "cuatrimestre", "estado", "documento_nombre", "notas", "origen",
+  "administracion", "iva", "cuatrimestre", "estado", "documento_nombre", "notas", "origen",
+  // `anticipos` lo mantiene el trigger desde notas_ajuste (un lote nuevo no tiene notas).
 ];
 const CAMPOS_FACTURA = ["consecutivo", "cedula", "nombre", "email", "telefono", "ciudad_depto", "cod_ciudad", "valor_comision", "valor_base"];
 const pick = (obj, campos) => { const o = {}; for (const k of campos) if (obj?.[k] !== undefined) o[k] = obj[k]; return o; };

@@ -152,7 +152,12 @@ export default function CuentaVista({ id, onCerrar }) {
             <tbody>
               <tr><td>SUBTOTAL:</td><td className="r">{fmtPesos(subtotal)}</td></tr>
               <tr><td>IVA 19%:</td><td className="r">{fmtPesos(iva)}</td></tr>
-              {anticipos > 0 && <tr><td>ANTICIPOS:</td><td className="r">−{fmtPesos(anticipos)}</td></tr>}
+              {anticipos !== 0 && (
+                <tr>
+                  <td>{anticipos > 0 ? "NOTA CRÉDITO:" : "NOTA DÉBITO:"}</td>
+                  <td className="r">{anticipos > 0 ? "−" : "+"}{fmtPesos(Math.abs(anticipos))}</td>
+                </tr>
+              )}
               <tr className="grande"><td>TOTAL:</td><td className="r">{fmtPesos(total)}</td></tr>
             </tbody>
           </table>

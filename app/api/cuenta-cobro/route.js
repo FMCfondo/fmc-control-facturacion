@@ -11,7 +11,9 @@ const CAMPOS = [
   "cliente_direccion", "cliente_correo", "mes", "anio", "fecha_elaboracion",
   "fecha_vencimiento", "factura_inicial", "factura_final", "num_facturas",
   "valor_facturado", "valor_recibido", "reserva_individual", "administracion",
-  "iva", "anticipos", "cuatrimestre", "estado", "documento_nombre", "notas",
+  "iva", "cuatrimestre", "estado", "documento_nombre", "notas",
+  // `anticipos` NO va aquí: lo mantiene el trigger trg_notas_recalc desde
+  // notas_ajuste. Aceptarlo del cliente lo desincronizaría al primer cambio.
 ];
 
 function limpiar(body) {

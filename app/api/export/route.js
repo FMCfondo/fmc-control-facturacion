@@ -12,10 +12,11 @@ export async function GET() {
     const sb = supabaseAdmin();
     // `actividad` se incluye para que el respaldo de la BD sea completo
     // (la bitácora es parte de la trazabilidad del sistema).
-    const [cc, fs, pg, mu, it, cf, pa, ac] = await Promise.all([
+    const [cc, fs, pg, na, mu, it, cf, pa, ac] = await Promise.all([
       sb.from("cuentas_cobro").select("*").order("consecutivo"),
       sb.from("facturas_siigo").select("*").order("consecutivo"),
       sb.from("pagos").select("*").order("fecha"),
+      sb.from("notas_ajuste").select("*").order("fecha"),
       sb.from("mutuales").select("*").order("nombre"),
       sb.from("items_cuenta_cobro").select("*"),
       sb.from("config").select("*"),
@@ -26,6 +27,7 @@ export async function GET() {
       cuentas_cobro: cc.data || [],
       facturas_siigo: fs.data || [],
       pagos: pg.data || [],
+      notas_ajuste: na.data || [],
       mutuales: mu.data || [],
       items_cuenta_cobro: it.data || [],
       config: cf.data || [],
