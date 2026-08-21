@@ -1,6 +1,7 @@
 import "./globals.css";
 import Shell from "./Shell";
 import IdleLogout from "./IdleLogout";
+import SesionGuard from "./SesionGuard";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
@@ -14,6 +15,7 @@ export default function RootLayout({ children }) {
     <html lang="es">
       <body>
         <IdleLogout />
+        <SesionGuard />
         <Shell>{children}</Shell>
         <Analytics />
         <SpeedInsights />
