@@ -5,11 +5,15 @@ import { leerTodo } from "../../../lib/db";
 import { esUUID } from "../../../lib/validar";
 import { logActividad } from "../../../lib/actividad";
 import { generarPDFEstadoCuenta } from "../../../lib/pdf";
+import { armarCuentaPDF, pesoAdjuntos, enMB, TOPE_ADJUNTOS_BYTES } from "../../../lib/documentoCuenta";
 import { requireUser } from "../../../lib/requireUser";
 import { origenApp } from "../../../lib/origen";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+// Arma un PDF por cada cuenta pendiente: se sube el tope de duración desde
+// los 10 s por defecto (Vercel permite hasta 60 s en el plan Hobby).
+export const maxDuration = 60;
 
 const pesos = (v) => "$" + Math.round(Number(v) || 0).toLocaleString("es-CO");
 const lista = (s) => String(s || "").split(/[,;]/).map((x) => x.trim()).filter(Boolean);
@@ -86,7 +90,7 @@ export async function POST(request) {
     // y la lectura pagina: un estado de cuenta al que le faltan filas es un
     // cobro incorrecto enviado a un tercero. Ver lib/db.js.
     const { filas: rows } = await leerTodo(sb, "cuentas_cobro", {
-      columnas: "consecutivo,fecha_elaboracion,fecha_vencimiento,valor_facturado,valor_recibido,saldo,mutuales(nombre,nit,dv)",
+      columnas: "id,consecutivo,fecha_elaboracion,fecha_vencimiento,valor_facturado,valor_recibido,saldo,mutuales(nombre,nit,dv)",
       filtro: (q) => (mutual_id ? q.gt("saldo", 0).eq("mutual_id", mutual_id) : q.gt("saldo", 0).eq("cliente_nombre", cliente)),
       orden: [{ col: "fecha_vencimiento", opts: { ascending: true, nullsFirst: false } }],
     });
@@ -121,6 +125,28 @@ export async function POST(request) {
     } catch (_) {}
 
     const pdf = generarPDFEstadoCuenta({ cliente: nombre, nit, filas, fondo, logoBase64, corte: hoy.toISOString().slice(0, 10) });
+    const adjuntos = [{ filename: `Estado de cuenta - ${nombre}.pdf`, content: pdf, contentType: "application/pdf" }];
+
+    // Un PDF COMPLETO (documento + anexo) por CADA cuenta pendiente, como
+    // adjuntos separados: la mutual necesita poder abrir cada cuenta de cobro
+    // por su lado, no un archivo fusionado.
+    // Se generan en serie a propósito: en paralelo se tendrían todos los PDF en
+    // memoria a la vez, y cada anexo puede traer cientos de filas.
+    for (const r of rows) {
+      const doc = await armarCuentaPDF(sb, r.id, { fondo, logoBase64 });
+      adjuntos.push({ filename: doc.filename, content: doc.pdf, contentType: "application/pdf" });
+    }
+
+    // Se comprueba el tamaño ANTES de enviar. Si se pasa, se avisa con la cifra
+    // exacta en vez de dejar que Gmail rechace el correo con un error opaco —y
+    // sin omitir adjuntos en silencio, que sería peor: parecería que fueron todos.
+    const peso = pesoAdjuntos(adjuntos);
+    if (peso > TOPE_ADJUNTOS_BYTES) {
+      return NextResponse.json({
+        error: `Los adjuntos pesan ${enMB(peso)} MB (${adjuntos.length} archivos) y Gmail no admite más de 25 MB. ` +
+               `Envía este cliente por partes: primero las cuentas más vencidas desde el botón "Cuenta" del tablero.`,
+      }, { status: 413 });
+    }
 
     const transport = nodemailer.createTransport({ service: "gmail", auth: { user, pass } });
     await transport.sendMail({
@@ -128,14 +154,15 @@ export async function POST(request) {
       to: dest, cc: lista(cc),
       subject: `Estado de cuenta — ${nombre}`,
       html: plantilla({ nombre, filas, totSaldo, vencido, corte: hoy.toISOString().slice(0, 10), mensaje, fondo }),
-      attachments: [{ filename: `Estado de cuenta - ${nombre}.pdf`, content: pdf, contentType: "application/pdf" }],
+      attachments: adjuntos,
     });
 
     await logActividad({
       tipo: "Estado de cuenta enviado",
-      descripcion: `Estado de cuenta de ${nombre} enviado a ${dest.join(", ")} — ${filas.length} cuenta(s), saldo ${pesos(totSaldo)}`,
+      descripcion: `Estado de cuenta de ${nombre} enviado a ${dest.join(", ")} — ${filas.length} cuenta(s), saldo ${pesos(totSaldo)} · ${adjuntos.length} adjunto(s), ${enMB(peso)} MB`,
       entidad: "estado_cuenta", entidad_id: nombre,
-      detalle: { cliente: nombre, cuentas: filas.length, saldo: pesos(totSaldo), vencido: pesos(vencido), para: dest, cc: lista(cc) },
+      detalle: { cliente: nombre, cuentas: filas.length, saldo: pesos(totSaldo), vencido: pesos(vencido), para: dest, cc: lista(cc),
+                 adjuntos: adjuntos.map((a) => a.filename), peso_mb: enMB(peso) },
     });
     return NextResponse.json({ ok: true });
   } catch (e) {

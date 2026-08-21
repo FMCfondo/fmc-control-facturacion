@@ -3,7 +3,7 @@ import nodemailer from "nodemailer";
 import { supabaseAdmin } from "../../../lib/supabase";
 import { esUUID } from "../../../lib/validar";
 import { logActividad } from "../../../lib/actividad";
-import { generarPDFCuenta } from "../../../lib/pdf";
+import { armarCuentaPDF } from "../../../lib/documentoCuenta";
 import { requireUser } from "../../../lib/requireUser";
 import { origenApp } from "../../../lib/origen";
 
@@ -78,11 +78,7 @@ export async function POST(request) {
       if (pm < 1) { pm = 12; pa = pa - 1; }
       periodo = `${MESES[pm - 1]} ${pa}`;
     }
-    const [{ data: items }, { data: facturas }, { data: cfg }] = await Promise.all([
-      sb.from("items_cuenta_cobro").select("*").eq("cuenta_cobro_id", id),
-      sb.from("facturas_siigo").select("*").eq("cuenta_cobro_id", id).order("consecutivo"),
-      sb.from("config").select("*"),
-    ]);
+    const { data: cfg } = await sb.from("config").select("*");
     const c = Object.fromEntries((cfg || []).map((r) => [r.clave, r.valor]));
     const fondo = {
       nombre: c.fondo_nombre || "Fondo Mutuo de Cobertura S.A.S",
@@ -99,11 +95,13 @@ export async function POST(request) {
       logoBase64 = Buffer.from(await lr.arrayBuffer()).toString("base64");
     } catch (_) {}
 
-    // Generar el PDF en el servidor (puro JS, vectorial).
-    const pdf = generarPDFCuenta({ cuenta, mutual, items: items || [], facturas: facturas || [], fondo, logoBase64 });
+    // El documento lo arma lib/documentoCuenta.js — el MISMO que usa el estado
+    // de cuenta, para que los dos correos no manden versiones distintas del
+    // mismo papel. De paso, el anexo se lee paginado.
+    const doc = await armarCuentaPDF(sb, id, { fondo, logoBase64 });
 
     const transport = nodemailer.createTransport({ service: "gmail", auth: { user, pass } });
-    const attachments = [{ filename: `Cuenta de cobro ${cuenta.consecutivo} - ${nombre}.pdf`, content: pdf, contentType: "application/pdf" }];
+    const attachments = [{ filename: doc.filename, content: doc.pdf, contentType: "application/pdf" }];
 
     await transport.sendMail({
       from: `${fondo.nombre} <${user}>`,
