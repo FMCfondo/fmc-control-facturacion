@@ -1,56 +1,87 @@
 name: Mantener Supabase activo
 
 # El plan Free de Supabase pausa el proyecto tras ~7 días sin actividad, y esta
-# app se usa una vez al mes. Este ping semanal lo mantiene despierto.
+# app se usa una vez al mes.
 #
-# La URL del proyecto NO es secreta (viaja dentro de la app en el navegador), así
-# que va aquí directa: una pieza menos que se pueda configurar mal.
-# Solo se necesita UN secreto del repositorio (Settings → Secrets and variables →
-# Actions → pestaña "Secrets" → New repository secret):
-#   SUPABASE_ANON_KEY = la clave anon/public (Supabase → Settings → API)
+# POR QUÉ ES DIARIO Y NO SEMANAL
+# La primera versión pingeaba una vez por semana y el proyecto SE PAUSÓ IGUAL
+# (agosto 2026). Los datos: el ping del 3-ago funcionó y el del 10-ago encontró
+# el proyecto ya dormido. Entre uno y otro pasaron 6 días 22 h 35 min — o sea
+# 85 minutos de margen contra el tope de 7 días. Y los cron de GitHub se
+# retrasan: en este mismo workflow se han medido retrasos de 1 h 11 min y de
+# 2 h 36 min, porque en punto es cuando más carga tienen. Un ping semanal contra
+# un tope de 7 días es una moneda al aire. Diario deja 6 días de margen.
+#
+# El minuto :17 y una hora poco concurrida son a propósito, por lo mismo.
+#
+# ⚠️ GitHub DESACTIVA los cron de un repositorio público tras 60 días sin
+# actividad. Si la app pasa dos meses sin commits, hay que volver a activarlo en
+# Actions → Mantener Supabase activo → Enable workflow.
+
 env:
   SUPABASE_URL: https://sfgcbdaospsbjhxsifcf.supabase.co
   APP_URL: https://facturacion.fondomutuodecobertura.com
 
 on:
   schedule:
-    - cron: "0 13 * * 1"   # lunes 13:00 UTC (8:00 a. m. en Colombia)
+    - cron: "17 7 * * *"   # todos los días, 7:17 UTC (2:17 a. m. en Colombia)
   workflow_dispatch:
 
 jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Diagnóstico de la configuración
-        env:
-          KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-        run: |
-          echo "URL del proyecto: $SUPABASE_URL"
-          if [ -z "$KEY" ]; then
-            echo "::warning::El secreto SUPABASE_ANON_KEY no está configurado (o está vacío)."
-            echo "Créalo en: Settings → Secrets and variables → Actions → pestaña 'Secrets' → New repository secret."
-            echo "Ojo: debe estar en la pestaña ACTIONS, no en Dependabot ni Codespaces."
-          else
-            echo "Clave anon: configurada (${#KEY} caracteres)"
-          fi
-
+      # ── Vía 1: lectura directa de la base ──────────────────────────────────
+      # Con RLS activo y sin políticas no devuelve datos, pero la consulta llega
+      # a Postgres, que es lo que cuenta como actividad.
       - name: Consultar la base de datos
+        id: db
         env:
           KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
-          # Con RLS activo y sin políticas no devuelve datos, pero el request llega
-          # al proyecto y cuenta como actividad (que es lo que evita la pausa).
+          if [ -z "$KEY" ]; then
+            echo "::warning::El secreto SUPABASE_ANON_KEY no está configurado."
+            echo "ok=no" >> "$GITHUB_OUTPUT"; exit 0
+          fi
           codigo=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 \
             -H "apikey: $KEY" -H "Authorization: Bearer $KEY" \
             "$SUPABASE_URL/rest/v1/parametros?select=clave&limit=1") || codigo="000"
-          echo "Respuesta de Supabase: HTTP $codigo"
+          echo "Supabase respondió HTTP $codigo"
           case "$codigo" in
-            000) echo "::error::Supabase no respondió. ¿El proyecto está pausado o la URL cambió?"; exit 1 ;;
-            401) echo "::warning::HTTP 401 (clave ausente o inválida). El proyecto SÍ recibió el request y sigue despierto, pero conviene revisar el secreto." ;;
-            *)   echo "Proyecto despierto y respondiendo." ;;
+            2*) echo "ok=si" >> "$GITHUB_OUTPUT" ;;
+            401|403)
+              # Un 401 lo rechaza la puerta de enlace y NO está comprobado que
+              # llegue a la base. Antes se daba por bueno; no volvemos a asumirlo.
+              echo "::warning::HTTP $codigo — clave ausente o inválida. No se puede dar por despierto el proyecto por esta vía."
+              echo "ok=no" >> "$GITHUB_OUTPUT" ;;
+            *)  echo "::warning::HTTP $codigo — Supabase no respondió por esta vía."
+                echo "ok=no" >> "$GITHUB_OUTPUT" ;;
           esac
 
+      # ── Vía 2: la propia aplicación ────────────────────────────────────────
+      # Cargar /login hace que el proxy llame a Supabase Auth desde el servidor.
+      # Es una vía INDEPENDIENTE de la anterior y no necesita ningún secreto.
       - name: Despertar la aplicación
+        id: app
         run: |
-          codigo=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "$APP_URL/login") || codigo="000"
-          echo "Respuesta de la app: HTTP $codigo"
+          codigo=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 -L "$APP_URL/login") || codigo="000"
+          echo "La aplicación respondió HTTP $codigo"
+          case "$codigo" in
+            2*|3*) echo "ok=si" >> "$GITHUB_OUTPUT" ;;
+            *) echo "::warning::HTTP $codigo — la aplicación no respondió."
+               echo "ok=no" >> "$GITHUB_OUTPUT" ;;
+          esac
+
+      # ── Veredicto ──────────────────────────────────────────────────────────
+      # Basta con que UNA de las dos vías funcione. Si fallan las dos, el job
+      # falla y GitHub manda correo: es la única alerta que existe hoy, y es la
+      # que faltó en agosto (el ping llevaba días fallando y nos enteramos
+      # porque se cayó la app).
+      - name: Verificar que el proyecto sigue despierto
+        run: |
+          echo "Base de datos: ${{ steps.db.outputs.ok }} · Aplicación: ${{ steps.app.outputs.ok }}"
+          if [ "${{ steps.db.outputs.ok }}" = "no" ] && [ "${{ steps.app.outputs.ok }}" = "no" ]; then
+            echo "::error::Ninguna de las dos vías respondió. Revisa si el proyecto de Supabase está pausado (Supabase → el proyecto → Restore project)."
+            exit 1
+          fi
+          echo "Proyecto despierto."
