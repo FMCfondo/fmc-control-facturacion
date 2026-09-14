@@ -4,13 +4,13 @@ import { supabaseAdmin } from "../../../lib/supabase";
 import { esUUID } from "../../../lib/validar";
 import { logActividad } from "../../../lib/actividad";
 import { armarCuentaPDF } from "../../../lib/documentoCuenta";
+import { periodoGarantias } from "../../../lib/cuenta";
 import { requireUser } from "../../../lib/requireUser";
 import { origenApp } from "../../../lib/origen";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 const pesos = (v) => "$" + Math.round(Number(v) || 0).toLocaleString("es-CO");
 const lista = (s) => String(s || "").split(/[,;]/).map((x) => x.trim()).filter(Boolean);
 // Escapa texto que se interpola dentro del HTML del correo (evita inyección de HTML).
@@ -71,13 +71,9 @@ export async function POST(request) {
     if (error) throw error;
     const mutual = cuenta.mutuales || null;
     const nombre = mutual?.nombre || cuenta.cliente_nombre || "Cliente";
-    // Período de las garantías = mes ANTERIOR a la elaboración (se factura mes vencido).
-    let periodo = String(cuenta.anio || "");
-    if (cuenta.mes) {
-      let pm = cuenta.mes - 1, pa = cuenta.anio;
-      if (pm < 1) { pm = 12; pa = pa - 1; }
-      periodo = `${MESES[pm - 1]} ${pa}`;
-    }
+    // Período de las garantías = mes ANTERIOR a la elaboración. La regla vive en
+    // lib/cuenta.js, compartida con el PDF y la pantalla.
+    const periodo = periodoGarantias(cuenta) || String(cuenta.anio || "");
     const { data: cfg } = await sb.from("config").select("*");
     const c = Object.fromEntries((cfg || []).map((r) => [r.clave, r.valor]));
     const fondo = {
