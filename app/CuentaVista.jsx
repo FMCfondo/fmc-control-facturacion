@@ -3,9 +3,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { FONDO } from "../lib/siigo/constantes";
 import { fmtPesos, fmtFecha } from "../lib/format";
-import { calcularTotalesCuenta } from "../lib/cuenta";
+import { calcularTotalesCuenta, descripcionServicio } from "../lib/cuenta";
 
-const MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 
 // Documento de la cuenta de cobro (cuenta + anexo) con sus acciones.
 // Se usa en dos lugares:
@@ -74,9 +73,7 @@ export default function CuentaVista({ id, onCerrar }) {
   if (items && items.length) {
     lineas = items.map((it) => ({ q: it.cantidad, codigo: it.codigo, desc: it.descripcion, unit: Number(it.valor_unitario), sub: Number(it.subtotal) }));
   } else {
-    const desc = mutual
-      ? `SERVICIO DE COBERTURA DE CRÉDITOS${cuenta.mes ? ` (${MESES[cuenta.mes - 1]} ${cuenta.anio})` : ""}`
-      : (cuenta.notas || "Cuenta de cobro");
+    const desc = descripcionServicio(cuenta, mutual); // mes de las garantías (el anterior), no el de elaboración
     lineas = [{ q: 1, codigo: mutual ? "FMC01" : "", desc, unit: subtotal, sub: subtotal }];
   }
 
