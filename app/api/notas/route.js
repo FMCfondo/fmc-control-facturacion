@@ -76,8 +76,10 @@ export async function GET(request) {
       if (!Number.isInteger(n) || n <= 0)
         return NextResponse.json({ error: "Número de factura inválido" }, { status: 400 });
       const origen = await origenDeFactura(sb, n);
-      if (!origen) return NextResponse.json({ error: `No existe la factura ${n}.` }, { status: 404 });
-      return NextResponse.json({ origen });
+      // Que la factura no esté en la app NO es un error: puede ser anterior a
+      // la app (existe en SIIGO, no aquí). Se informa y el formulario lo muestra
+      // para que el operador confirme que es eso y no un número mal escrito.
+      return NextResponse.json({ origen, encontrada: !!origen, factura: n });
     }
 
     const id = q.get("cuenta_cobro_id");
@@ -112,14 +114,21 @@ export async function POST(request) {
       if (!Number.isInteger(n) || n <= 0)
         return NextResponse.json({ error: "Número de factura inválido" }, { status: 400 });
       origen = await origenDeFactura(sb, n);
-      if (!origen) return NextResponse.json({ error: `No existe la factura ${n}.` }, { status: 404 });
+      // Si no está en la app se registra igual, como referencia externa: sin
+      // porcentajes de origen (se usan los vigentes) y marcada para que quede
+      // claro en el detalle. El valor, en ese caso, tiene que venir escrito.
+      if (!origen) origen = { factura: n, externa: true, valor: null, pct_admin_origen: null, iva_pct_origen: null };
     }
 
     // El valor lo puede ajustar el operador (una anulación parcial), pero por
     // defecto es el de la factura de origen.
     const valor = b.valor != null && String(b.valor).trim() !== "" ? Number(b.valor) : origen?.valor;
     if (!Number.isFinite(valor) || valor <= 0)
-      return NextResponse.json({ error: "El valor debe ser un número mayor que cero" }, { status: 400 });
+      return NextResponse.json({
+        error: origen?.externa
+          ? `La factura ${origen.factura} no está en la app, así que el valor no se puede precargar: escríbelo.`
+          : "El valor debe ser un número mayor que cero",
+      }, { status: 400 });
 
     const fila = {
       cuenta_cobro_id: b.cuenta_cobro_id,
@@ -127,6 +136,7 @@ export async function POST(request) {
       valor,
       motivo,
       factura_origen: origen?.factura ?? null,
+      origen_en_app: !!origen && !origen.externa,
       pct_admin_origen: origen?.pct_admin_origen ?? null,
       iva_pct_origen: origen?.iva_pct_origen ?? null,
       fecha: b.fecha || new Date().toISOString().slice(0, 10),
@@ -139,7 +149,11 @@ export async function POST(request) {
       tipo: b.tipo === "credito" ? "Nota crédito" : "Nota débito",
       descripcion:
         `Nota ${b.tipo} de ${fmtPesosLog(valor)}${r ? ` — CC #${r.consecutivo} · ${r.cliente}` : ""}` +
-        `${origen ? ` · corrige la factura ${origen.factura} (CC #${origen.cuenta_origen ?? "—"}, ${origen.fecha_origen ?? "sin fecha"})` : " · sin factura de origen"}`,
+        `${origen
+          ? (origen.externa
+              ? ` · corrige la factura ${origen.factura} (anterior a la app; porcentajes vigentes)`
+              : ` · corrige la factura ${origen.factura} (CC #${origen.cuenta_origen ?? "—"}, ${origen.fecha_origen ?? "sin fecha"})`)
+          : " · sin factura de origen"}`,
       entidad: "nota_ajuste", entidad_id: r?.consecutivo ?? b.cuenta_cobro_id,
       detalle: { ...fila, motivo, origen, cuenta: r },
     });

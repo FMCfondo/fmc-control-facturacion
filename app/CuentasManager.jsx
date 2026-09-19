@@ -219,6 +219,11 @@ export default function CuentasManager({ cuentas, mutuales }) {
     const r = await fetch(`/api/notas?factura=${encodeURIComponent(num)}`);
     const d = await r.json();
     if (!r.ok) { setNotaMsg("✗ " + d.error); return; }
+    if (!d.encontrada) {
+      // Anterior a la app: se puede registrar igual, pero el valor hay que escribirlo.
+      setNotaOrigen({ externa: true, factura: d.factura });
+      return;
+    }
     setNotaOrigen(d.origen);
     // El valor se precarga, pero se puede cambiar (anulación parcial).
     setNotaForm((f) => ({ ...f, valor: f.valor || String(d.origen.valor) }));
@@ -547,7 +552,9 @@ export default function CuentasManager({ cuentas, mutuales }) {
                     <tr key={n.id}>
                       <td>{fmtFecha(n.fecha)}</td>
                       <td><span className="tag">{n.tipo}</span></td>
-                      <td>{n.factura_origen ?? "—"}</td>
+                      <td title={n.factura_origen && !n.origen_en_app ? "Factura anterior a la app: reversión con porcentajes vigentes" : undefined}>
+                        {n.factura_origen ?? "—"}{n.factura_origen && !n.origen_en_app ? " *" : ""}
+                      </td>
                       <td className="num" style={{ color: n.tipo === "credito" ? "#a22d2d" : "#166534" }}>
                         {n.tipo === "credito" ? "−" : "+"}{fmtPesos(n.valor)}
                       </td>
@@ -575,7 +582,14 @@ export default function CuentasManager({ cuentas, mutuales }) {
               <input placeholder="Motivo: qué pasó y cuándo (obligatorio)" value={notaForm.motivo}
                 onChange={(e) => setNotaForm({ ...notaForm, motivo: e.target.value })} required />
 
-              {notaOrigen && (
+              {notaOrigen?.externa && (
+                <div style={{ fontSize: 12.5, background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 8, padding: 12, color: "#92400e" }}>
+                  La factura <b>{notaOrigen.factura}</b> <b>no está en la app</b> — normal si es anterior a su creación.
+                  Se registrará como referencia y la reversión usará los <b>porcentajes vigentes</b> (no hay cuenta de
+                  origen de la que tomarlos). Escribe el valor con IVA. Si el número era un error, corrígelo antes de registrar.
+                </div>
+              )}
+              {notaOrigen && !notaOrigen.externa && (
                 <div className="ok-box" style={{ fontSize: 12.5 }}>
                   Factura <b>{notaOrigen.factura}</b> · {notaOrigen.nombre || notaOrigen.cedula} · {fmtPesos(notaOrigen.valor)} c/IVA<br />
                   Cuenta de cobro de origen <b>#{notaOrigen.cuenta_origen ?? "—"}</b> ({notaOrigen.cliente_origen || "—"}) del {fmtFecha(notaOrigen.fecha_origen) || "—"}<br />
