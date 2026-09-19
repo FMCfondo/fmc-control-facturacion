@@ -151,7 +151,7 @@ export default function CuentaVista({ id, onCerrar }) {
               <tr><td>IVA 19%:</td><td className="r">{fmtPesos(iva)}</td></tr>
               {anticipos !== 0 && (
                 <tr>
-                  <td>{anticipos > 0 ? "NOTA CRÉDITO:" : "NOTA DÉBITO:"}</td>
+                  <td>{anticipos > 0 ? "DESCUENTO POR AJUSTE:" : "CARGO POR AJUSTE:"}</td>
                   <td className="r">{anticipos > 0 ? "−" : "+"}{fmtPesos(Math.abs(anticipos))}</td>
                 </tr>
               )}

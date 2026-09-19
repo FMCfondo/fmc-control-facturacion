@@ -104,7 +104,10 @@ export async function POST(request) {
       to: dest,
       cc: lista(cc),
       subject: `Cuenta de cobro N° ${cuenta.consecutivo} — ${fondo.nombre}`,
-      html: plantilla({ origin, nombre, cc: cuenta.consecutivo, periodo, total: pesos(cuenta.valor_facturado), mensaje, fondo }),
+      // El total es el del PDF adjunto (ya con el ajuste), no `valor_facturado` en
+      // bruto: antes, con una nota crédito, el correo y el documento decían
+      // dos cifras distintas.
+      html: plantilla({ origin, nombre, cc: cuenta.consecutivo, periodo, total: pesos(doc.totales.total), mensaje, fondo }),
       attachments,
     });
 
@@ -112,7 +115,7 @@ export async function POST(request) {
       tipo: "Correo enviado",
       descripcion: `Cuenta de cobro #${cuenta.consecutivo} (${nombre}) enviada a ${dest.join(", ")}${lista(cc).length ? " (CC: " + lista(cc).join(", ") + ")" : ""}`,
       entidad: "cuenta_cobro", entidad_id: cuenta.consecutivo,
-      detalle: { cliente: nombre, total: pesos(cuenta.valor_facturado), periodo, para: dest, cc: lista(cc) },
+      detalle: { cliente: nombre, total: pesos(doc.totales.total), facturado: pesos(cuenta.valor_facturado), ajuste: pesos(doc.totales.anticipos), periodo, para: dest, cc: lista(cc) },
     });
     return NextResponse.json({ ok: true });
   } catch (e) {
